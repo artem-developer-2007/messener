@@ -1,41 +1,60 @@
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 
-// Хранилище кодов (в production используйте Redis или DB)
+// ХРАНИЛИЩЕ КОДОВ(ПОТОМ ИСПОЛЬЗУЮ БД)
 const emailCodes = new Map();
+const users = new Map(); // Временное хранилище пользователей
 
-// Генерация 6-значного кода
+// СЕКРЕТНЫЙ КЛЮЧ ДЛЯ JWT
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// ГЕНЕРАЦИЯ 6-НАЧНОГО КОДА
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Создание транспортера для email сервера
+// ГЕНЕРАЦИЯ JWT ТОКЕНА
+function generateToken(email, userId) {
+  return jwt.sign(
+    { 
+      email, 
+      userId, 
+      iat: Math.floor(Date.now() / 1000), // время создания
+      exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 час
+    },
+    JWT_SECRET
+  );
+}
+
+// СОЗДАНИЕ ТРАНСПОРТЕРА ДЛЯ EMAIL-СЕРВЕРА
 const createTransporter = () => {
-  return nodemailer.createTransport({ // ← createTransport вместо createTransporter
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT) || 465,
-    secure: true,
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST, // ХОСТ
+    port: parseInt(process.env.SMTP_PORT) || 465, // ПОРТ
+    secure: true, // ИСПОЛЬЗУЕТ SSL/TLS ШИФРОВАНИЕ
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.SMTP_USER, // ЛОГИН
+      pass: process.env.SMTP_PASS, // ПАРОЛЬ)СГЕНЕРИРОВАННЫЙ
     },
     tls: {
-      rejectUnauthorized: false
+      rejectUnauthorized: false //..........
     }
   });
 };
 
-// Проверка валидности email
+// ПРОВЕРКА ВАЛИДНОСТЬ EMAIL
 function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // 
+  return emailRegex.test(email); // 
 }
 
-// Очистка старых кодов
+// ОЧИСТКА СТАРЫХ КОДОВ
 function cleanupOldCodes() {
-  const now = Date.now();
-  const tenMinutesAgo = now - (10 * 60 * 1000);
+  const now = Date.now(); // ТЕКУЩЕЕ ВРЕМЯ
+  const tenMinutesAgo = now - (10 * 60 * 1000); // КОД БУДЕТ СУЩЕСТВОВАТЬ 10 МИНУТ
   
   for (let [email, data] of emailCodes.entries()) {
     if (data.createdAt < tenMinutesAgo) {
@@ -45,9 +64,34 @@ function cleanupOldCodes() {
   }
 }
 
+// Middleware для проверки JWT токена
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ 
+      success: false,
+      message: 'Токен доступа отсутствует' 
+    });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Недействительный токен' 
+      });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 // Отправка email с кодом
 router.post('/email', async (req, res) => {
   try {
+    // Тело запроса
     const { email } = req.body;
 
     // Валидация
@@ -65,12 +109,23 @@ router.post('/email', async (req, res) => {
       });
     }
 
+    // СОЗДАЕМ ИЛИ ПОЛУЧАЕМ USERID ДЛЯ EMAIL
+    let userId = users.get(email);
+    if (!userId) {
+      userId = uuidv4();
+      users.set(email, userId);
+      console.log(`Создан новый пользователь: ${email} -> ${userId}`);
+    } else {
+      console.log(`Найден существующий пользователь: ${email} -> ${userId}`);
+    }
+
     // Генерация и сохранение кода
     const code = generateCode();
     emailCodes.set(email, {
       code,
       createdAt: Date.now(),
-      attempts: 0
+      attempts: 0,
+      userId: userId // Сохраняем userId для кода
     });
 
     // Очистка старых кодов
@@ -82,7 +137,7 @@ router.post('/email', async (req, res) => {
     // Проверяем соединение с SMTP сервером
     try {
       await transporter.verify();
-      console.log('✅ SMTP connection verified');
+      console.log('SMTP connection verified');
     } catch (verifyError) {
       console.error('❌ SMTP connection failed:', verifyError);
       return res.status(500).json({ 
@@ -113,8 +168,7 @@ router.post('/email', async (req, res) => {
       `
     };
 
-    // Отправка (в production режиме)
-  // Отправка письма ВСЕГДА (и в development, и в production)
+    // Отправка письма ВСЕГДА (и в development, и в production)
   try {
     await transporter.sendMail(mailOptions);
     console.log(`✅ Email sent to: ${email}`);
@@ -124,6 +178,7 @@ router.post('/email', async (req, res) => {
       console.log('=== DEVELOPMENT INFO ===');
       console.log('📧 Email:', email);
       console.log('🔢 Code:', code);
+      console.log('👤 User ID:', userId);
       console.log('=======================');
     }
     
@@ -135,7 +190,8 @@ router.post('/email', async (req, res) => {
     res.json({ 
       success: true,
       message: 'Код отправлен на вашу почту',
-      code: process.env.NODE_ENV === 'production' ? null : code
+      code: process.env.NODE_ENV === 'production' ? null : code,
+      userId: userId // Возвращаем userId для отладки
     });
 
   } catch (error) {
@@ -213,13 +269,24 @@ router.post('/verify-code', async (req, res) => {
       });
     }
 
-    // Успешная проверка
+    // Успешная проверка - используем сохраненный userId из кода
+    const userId = storedData.userId;
+
+    // Генерируем JWT токен (он будет разным, но для одного userId)
+    const token = generateToken(email, userId);
+
+    // Удаляем использованный код
     emailCodes.delete(email);
+
+    console.log(`✅ Успешная аутентификация: ${email} -> ${userId}`);
+    console.log(`🔑 Сгенерирован токен для userId: ${userId}`);
 
     res.json({ 
       success: true,
       message: 'Код подтвержден успешно! ✅',
-      token: 'your-jwt-token-here'
+      token: token,
+      userId: userId,
+      email: email
     });
 
   } catch (error) {
@@ -229,6 +296,64 @@ router.post('/verify-code', async (req, res) => {
       message: 'Ошибка при проверке кода' 
     });
   }
+});
+
+// Проверка валидности токена
+router.get('/verify-token', authenticateToken, (req, res) => {
+  res.json({ 
+    success: true,
+    user: req.user 
+  });
+});
+
+// Получение информации о пользователе
+router.get('/user/:userId', authenticateToken, (req, res) => {
+  const { userId } = req.params;
+  
+  // Проверяем, что пользователь запрашивает свои данные
+  if (req.user.userId !== userId) {
+    return res.status(403).json({ 
+      success: false,
+      message: 'Доступ запрещен' 
+    });
+  }
+
+  // Ищем пользователя по userId
+  const userEntry = Array.from(users.entries()).find(([email, id]) => id === userId);
+  
+  if (!userEntry) {
+    return res.status(404).json({ 
+      success: false,
+      message: 'Пользователь не найден' 
+    });
+  }
+
+  res.json({ 
+    success: true,
+    user: {
+      userId: userId,
+      email: userEntry[0] // email из хранилища
+    }
+  });
+});
+
+// Получение userId по email (для отладки)
+router.get('/user-by-email/:email', (req, res) => {
+  const { email } = req.params;
+  const userId = users.get(email);
+  
+  if (!userId) {
+    return res.status(404).json({ 
+      success: false,
+      message: 'Пользователь не найден' 
+    });
+  }
+
+  res.json({ 
+    success: true,
+    email: email,
+    userId: userId
+  });
 });
 
 module.exports = router;
