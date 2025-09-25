@@ -186,7 +186,7 @@ function Auth() {
   return (
     <>
       {/* ОБЩИЙ КОНТЕЙНЕР */}
-      <div className="relative h-screen overflow-hidden bg-neutral-900">
+      <div className="relative h-screen overflow-hidden bg-stale">
         
         {/* ПЕРВЫЙ ЭКРАН - уезжает вверх */}
         <div className={`absolute inset-0 transition-transform duration-500 ease-in-out ${

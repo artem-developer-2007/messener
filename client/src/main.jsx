@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Auth from './Auth.jsx';
 import Messenger from './Messenger.jsx';
+import App from './App.jsx';
 
 // Компонент для защиты маршрутов
 const ProtectedRoute = ({ children }) => {
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')).render(
     <Router>
       <Routes>
         <Route path='/login' element={<Auth />} />
+        <Route path='/messenger1' element={<App />} />
         <Route 
           path='/messenger'  // УБРАЛИ :userId
           element={
