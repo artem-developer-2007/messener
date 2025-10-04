@@ -37,7 +37,7 @@ const createTransporter = () => {
     secure: true, // ИСПОЛЬЗУЕТ SSL/TLS ШИФРОВАНИЕ
     auth: {
       user: process.env.SMTP_USER, // ЛОГИН
-      pass: process.env.SMTP_PASS, // ПАРОЛЬ)СГЕНЕРИРОВАННЫЙ
+      pass: process.env.SMTP_PASS, // ПАРОЛЬ(СГЕНЕРИРОВАННЫЙ В ИМЕЙЛЕ)
     },
     tls: {
       rejectUnauthorized: false //..........
@@ -196,25 +196,6 @@ router.post('/email', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Email sending error:', error);
-    
-    if (error.code === 'EAUTH') {
-      return res.status(500).json({ 
-        success: false,
-        message: 'Ошибка аутентификации почтового сервера. Проверьте логин и пароль.' 
-      });
-    }
-    
-    if (error.code === 'ECONNECTION') {
-      return res.status(500).json({ 
-        success: false,
-        message: 'Ошибка подключения к почтовому серверу. Проверьте хост и порт.' 
-      });
-    }
-
-    res.status(500).json({ 
-      success: false,
-      message: 'Ошибка при отправке email. Попробуйте позже'
-    });
   }
 });
 

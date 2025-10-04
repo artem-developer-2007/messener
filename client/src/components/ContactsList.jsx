@@ -1,5 +1,3 @@
-import React from 'react';
-
 const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, setSearchTerm }) => {
   const filteredContacts = contacts.filter(contact => 
     contact.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -20,12 +18,6 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
   return (
     <div className="w-full md:w-1/5 flex flex-col border-r border-slate-700">
       <div className="p-4 border-b border-slate-700">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-blue-300">Сообщения</h2>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors">
-            <i className="fas fa-edit"></i>
-          </button>
-        </div>
         <div className="relative">
           <input 
             type="text" 

@@ -172,6 +172,17 @@ function Auth() {
     }
   };
 
+  // ОБРАБОТКА BACKSPACE ДЛЯ ПЕРЕХОДА НАЗАД
+  const handleKeyDown = (e, currentRef, prevRef) => {
+    // ЕСЛИ НАЖАЛИ BACKSPACE И ТЕКУЩЕЕ ПОЛЕ ПУСТОЕ
+    if (e.key === 'Backspace' && e.target.value === '') {
+      // ПЕРЕХОДИМ К ПРЕДЫДУЩЕМУ ИНПУТУ (ЕСЛИ ОН СУЩЕСТВУЕТ)
+      if (prevRef && prevRef.current) {
+        prevRef.current.focus();
+      }
+    }
+  };
+
   // АВТОФОКУС НА ПЕРВЫЙ ИНПУТ, ПРИ ПЕРЕХОДЕ НА ВТОРОЙ ЭКРАН
   useEffect(() => {
     if (currentScreen === 'second' && inputRef1.current) {
@@ -182,17 +193,17 @@ function Auth() {
       return () => clearTimeout(timer);
     }
   }, [currentScreen]);
-  
+
   return (
     <>
       {/* ОБЩИЙ КОНТЕЙНЕР */}
-      <div className="relative h-screen overflow-hidden bg-stale">
+      <div className="relative h-screen overflow-hidden bg-neutral-900">
         
         {/* ПЕРВЫЙ ЭКРАН - уезжает вверх */}
         <div className={`absolute inset-0 transition-transform duration-500 ease-in-out ${
           currentScreen === 'first' 
-            ? 'translate-y-0' 
-            : '-translate-y-full'
+            ? 'translate-x-0' 
+            : '-translate-x-full'
         }`}>
           
           <div className="flex flex-col items-center justify-center pt-32">
@@ -273,8 +284,8 @@ function Auth() {
         {/* ВТОРОЙ ЭКРАН - появляется снизу */}
         <div className={`absolute inset-0 transition-transform duration-500 ease-in-out ${
           currentScreen === 'second' 
-            ? 'translate-y-0' 
-            : 'translate-y-full'
+            ? 'translate-x-0' 
+            : 'translate-x-full'
         }`}>
           
           <div className="h-full bg-neutral-900 flex flex-col items-center justify-center">
@@ -299,7 +310,7 @@ function Auth() {
 
             <div className="text-center mb-8">
               <p className="text-white text-xl">Введите код из письма</p>
-              <p className="text-gray-400 text-sm mt-2">Отправлено на: {storedEmail}</p>
+              <p className="text-gray-400 text-sm mt-2">Код отправлен на: {storedEmail}</p>
             </div>
 
             <div className="flex flex-row items-center justify-center gap-3">
@@ -314,6 +325,11 @@ function Auth() {
                     e, 
                     ref, 
                     index < 5 ? [inputRef2, inputRef3, inputRef4, inputRef5, inputRef6, null][index] : null
+                  )}
+                  onKeyDown={(e) => handleKeyDown(
+                    e,
+                    ref,
+                    index > 0 ? [null, inputRef1, inputRef2, inputRef3, inputRef4, inputRef5][index] : null
                   )}
                   onKeyPress={handleKeyPress}
                   className="w-16 h-16 border text-white border-gray-600 rounded-lg text-center text-2xl 
