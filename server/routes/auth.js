@@ -420,7 +420,7 @@ router.get('/init-db', async (req, res) => {
   }
 });
 
-// 🧹 РУЧНАЯ ОЧИСТКА УСТАРЕВШИХ КОДОВ (для администрирования)
+// 🧹 РУЧНАЯ ОЧИСТКА УСТАРЕВШИХ КОДОВ (для администрирования)e
 router.post('/cleanup-codes', authenticateToken, async (req, res) => {
   try {
     const cleanedCount = await cleanupExpiredCodes();
