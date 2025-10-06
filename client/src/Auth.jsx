@@ -35,103 +35,95 @@ function Auth() {
 
   // ПРОВЕРКА ВАЛИДНОСТИ EMAIL-А
   const handleSubmit = async () => {
-    if (!email || !email.includes('@')) {
-      setMessage('Пожалуйста, введите корректный email');
-      return;
+  if (!email || !email.includes('@')) {
+    setMessage('Пожалуйста, введите корректный email');
+    return;
+  }
+
+  setIsLoading(true);
+  setMessage('');
+
+  try {
+    console.log('🔄 Отправка запроса на /api/auth/email...');
+    
+    // ИЗМЕНИТЕ ЭТУ СТРОКУ - добавить /api/auth/
+    const response = await axios.post('http://localhost:5000/api/auth/email', {
+      email: email
+    });
+
+    console.log('✅ Ответ от сервера:', response.data);
+    
+    setMessage(response.data.message || 'Email успешно отправлен!');
+    setStoredEmail(email);
+    setEmail('');
+
+    setTimeout(() => {
+      toggleScreen();
+    }, 500);
+
+  } catch (error) {
+    console.error('❌ Ошибка отправки:', error);
+    
+    if (error.response) {
+      setMessage(error.response.data.message || `Ошибка сервера: ${error.response.status}`);
+    } else if (error.request) {
+      setMessage('Нет ответа от сервера. Проверьте подключение.');
+    } else {
+      setMessage('Произошла ошибка при отправке');
     }
-
-    // КОЛЕСИКО
-    setIsLoading(true);
-    setMessage(''); // Очищаем предыдущие сообщения
-
-    // ОТПРАВКА ДАННЫХ НА СЕРВЕР
-    try {
-      const response = await axios.post('http://localhost:5000/email', {
-        email: email
-      });
-
-      // СООБЩЕНИЕ
-      setMessage(response.data.message || 'Email успешно отправлен!');
-      
-      // СОХРАНЯЕМ EMAIL ДЛЯ ВТОРОГО ЭКРАНА
-      setStoredEmail(email);
-      
-      // ОТЧИСТКА EMAIL ПОСЛЕ ЕГО ОТПРАВКИ
-      setEmail('');
-      
-      // ПЕРЕКЛЮЧЕНИЕ НА ВТОРОЙ ЭКРАН, ПОСЛЕ УСПЕШНОЙ ОТПРАВКИ, 500 МС ЗАДЕРЖКА
-      setTimeout(() => {
-        toggleScreen();
-      }, 500);
-
-      // ОБРАБОТКА ОШИБОК
-    } catch (error) {
-      console.error('Ошибка отправки:', error);
-      
-      if (error.response) {
-        setMessage(error.response.data.message || 'Ошибка сервера');
-      } else if (error.request) {
-        setMessage('Нет ответа от сервера. Проверьте подключение.');
-      } else {
-        setMessage('Произошла ошибка при отправке');
-      }
-      
-      // ОСТАНОВИТЬ КОЛЕСИКО
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // ПРОВЕРКА КОДА И АУТЕНТИФИКАЦИЯ
   const handleVerifyCode = async () => {
-    const code = code1 + code2 + code3 + code4 + code5 + code6;
-    
-    if (code.length !== 6) {
-      setSecondScreenMessage('Пожалуйста, введите полный код');
-      return;
-    }
+  const code = code1 + code2 + code3 + code4 + code5 + code6;
+  
+  if (code.length !== 6) {
+    setSecondScreenMessage('Пожалуйста, введите полный код');
+    return;
+  }
 
-    // ПРОВЕРЯЕМ ЧТО EMAIL СОХРАНЕН
-    if (!storedEmail) {
-      setSecondScreenMessage('Ошибка: email не найден. Вернитесь назад и введите email снова.');
-      return;
-    }
+  if (!storedEmail) {
+    setSecondScreenMessage('Ошибка: email не найден');
+    return;
+  }
 
-    setIsLoading(true);
-    setSecondScreenMessage(''); // Очищаем предыдущие сообщения
+  setIsLoading(true);
+  setSecondScreenMessage('');
 
-    try {
-      const response = await axios.post('http://localhost:5000/verify-code', {
-        email: storedEmail,
-        code: code
-      });
+  try {
+    // ИЗМЕНИТЕ И ЭТОТ URL
+    const response = await axios.post('http://localhost:5000/api/auth/verify-code', {
+      email: storedEmail,
+      code: code
+    });
 
-      if (response.data.success) {
-        // Сохраняем токен в localStorage
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('userEmail', storedEmail);
-        
-        setSecondScreenMessage('Успешная аутентификация!');
-        
-        // Перенаправляем на страницу мессенджера
-        setTimeout(() => {
-          navigate('/messenger');
-        }, 1000);
-      } else {
-        setSecondScreenMessage(response.data.message);
-      }
-    } catch (error) {
-      console.error('Ошибка проверки кода:', error);
+    if (response.data.success) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('userEmail', storedEmail);
       
-      if (error.response) {
-        setSecondScreenMessage(error.response.data.message || 'Ошибка сервера');
-      } else {
-        setSecondScreenMessage('Произошла ошибка при проверке кода');
-      }
-    } finally {
-      setIsLoading(false);
+      setSecondScreenMessage('Успешная аутентификация!');
+      
+      setTimeout(() => {
+        navigate('/messenger');
+      }, 1000);
+    } else {
+      setSecondScreenMessage(response.data.message);
     }
-  };
+  } catch (error) {
+    console.error('Ошибка проверки кода:', error);
+    
+    if (error.response) {
+      setSecondScreenMessage(error.response.data.message || 'Ошибка сервера');
+    } else {
+      setSecondScreenMessage('Произошла ошибка при проверке кода');
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // ЕСЛИ ПОЛЬЗОВАТЕЛЬ НАЖАЛ ENTER - ОТПРАВИТЬ EMAIL НА СЕРВЕР
   const handleKeyPress = (e) => {

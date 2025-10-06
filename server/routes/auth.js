@@ -2,18 +2,15 @@ const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
 const { 
   upsertUserWithCode, 
   verifyCode, 
   getUserByEmail,
+  getUserById,
+  searchUsers,
   cleanupExpiredCodes,
   testConnection 
-} = require('../database'); // Импортируем наши функции из database.js
-
-// УДАЛЯЕМ временные хранилища - теперь используем PostgreSQL!
-// const emailCodes = new Map(); ← УДАЛИТЬ
-// const users = new Map(); ← УДАЛИТЬ
+} = require('../database');
 
 // СЕКРЕТНЫЙ КЛЮЧ ДЛЯ JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -58,7 +55,7 @@ function isValidEmail(email) {
   return emailRegex.test(email);
 }
 
-// ОЧИСТКА СТАРЫХ КОДОВ (теперь используем PostgreSQL)
+// ОЧИСТКА СТАРЫХ КОДОВ
 async function cleanupOldCodes() {
   try {
     await cleanupExpiredCodes();
@@ -91,12 +88,14 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Отправка email с кодом (ОБНОВЛЕНО для работы с PostgreSQL)
+// ==================== ЭНДПОИНТЫ АУТЕНТИФИКАЦИИ ====================
+
+// 📧 ОТПРАВКА EMAIL С КОДОМ ПОДТВЕРЖДЕНИЯ
 router.post('/email', async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Валидация
+    // Валидация входных данных
     if (!email) {
       return res.status(400).json({ 
         success: false,
@@ -111,9 +110,9 @@ router.post('/email', async (req, res) => {
       });
     }
 
-    // Генерируем код и время expiration
+    // Генерируем 6-значный код и время expiration (10 минут)
     const code = generateCode();
-    const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
+    const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     // СОХРАНЯЕМ В POSTGRESQL (создаем или обновляем пользователя)
     const dbResult = await upsertUserWithCode(email, code, codeExpiresAt);
@@ -125,10 +124,10 @@ router.post('/email', async (req, res) => {
       });
     }
 
-    // Очистка старых кодов
+    // Очистка старых кодов (фоново)
     await cleanupOldCodes();
 
-    // Настройка транспортера
+    // Настройка транспортера для отправки email
     const transporter = createTransporter();
 
     // Проверяем соединение с SMTP сервером
@@ -143,7 +142,7 @@ router.post('/email', async (req, res) => {
       });
     }
 
-    // Отправка email
+    // Отправка email с кодом подтверждения
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to: email,
@@ -170,7 +169,7 @@ router.post('/email', async (req, res) => {
       await transporter.sendMail(mailOptions);
       console.log(`✅ Email sent to: ${email}`);
       
-      // Дополнительно логируем для development
+      // Дополнительно логируем для development среды
       if (process.env.NODE_ENV !== 'production') {
         console.log('=== DEVELOPMENT INFO ===');
         console.log('📧 Email:', email);
@@ -187,6 +186,7 @@ router.post('/email', async (req, res) => {
     res.json({ 
       success: true,
       message: 'Код отправлен на вашу почту',
+      // В production не показываем код, в development показываем для тестирования
       code: process.env.NODE_ENV === 'production' ? null : code
     });
 
@@ -199,11 +199,12 @@ router.post('/email', async (req, res) => {
   }
 });
 
-// Проверка кода (ОБНОВЛЕНО для работы с PostgreSQL)
+// ✅ ПРОВЕРКА КОДА ПОДТВЕРЖДЕНИЯ И ВХОД
 router.post('/verify-code', async (req, res) => {
   try {
     const { email, code } = req.body;
 
+    // Валидация входных данных
     if (!email || !code) {
       return res.status(400).json({ 
         success: false,
@@ -246,7 +247,7 @@ router.post('/verify-code', async (req, res) => {
   }
 });
 
-// Проверка валидности токена
+// 🔐 ПРОВЕРКА ВАЛИДНОСТИ ТОКЕНА (для защищенных маршрутов)
 router.get('/verify-token', authenticateToken, (req, res) => {
   res.json({ 
     success: true,
@@ -254,13 +255,13 @@ router.get('/verify-token', authenticateToken, (req, res) => {
   });
 });
 
-// Получение информации о пользователе (ОБНОВЛЕНО для работы с PostgreSQL)
+// 👤 ПОЛУЧЕНИЕ ИНФОРМАЦИИ О ТЕКУЩЕМ ПОЛЬЗОВАТЕЛЕ
 router.get('/user/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
     
     // Проверяем, что пользователь запрашивает свои данные
-    if (req.user.userId !== userId) {
+    if (req.user.userId !== parseInt(userId)) {
       return res.status(403).json({ 
         success: false,
         message: 'Доступ запрещен' 
@@ -296,7 +297,116 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
   }
 });
 
-// Инициализация подключения к базе при старте
+// ==================== ЭНДПОИНТЫ ПОИСКА ПОЛЬЗОВАТЕЛЕЙ ====================
+
+// 🔍 ПОИСК ПОЛЬЗОВАТЕЛЕЙ ПО ID ИЛИ EMAIL
+router.get('/search-users', authenticateToken, async (req, res) => {
+  try {
+    const { searchTerm } = req.query;
+
+    // Проверяем что searchTerm предоставлен
+    if (!searchTerm || searchTerm.trim() === '') {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Пожалуйста, введите ID или email для поиска' 
+      });
+    }
+
+    console.log(`🔍 Поиск пользователей: "${searchTerm}"`);
+
+    // Ищем пользователей в базе данных
+    const foundUsers = await searchUsers(searchTerm.trim());
+
+    if (foundUsers.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Пользователи не найдены' 
+      });
+    }
+
+    // Форматируем ответ с пользователями
+    const formattedUsers = foundUsers.map(user => ({
+      id: user.id,
+      email: user.email,
+      // Генерируем аватар на основе ID пользователя (синий градиент)
+      avatar: `https://ui-avatars.com/api/?name=${user.id}&background=4294ff&color=ffffff&bold=true`,
+      // Используем ID как имя пользователя для отображения
+      displayName: `User${user.id}`,
+      is_verified: user.is_verified,
+      last_login: user.last_login,
+      created_at: user.created_at
+    }));
+
+    res.json({ 
+      success: true,
+      message: `Найдено пользователей: ${formattedUsers.length}`,
+      users: formattedUsers
+    });
+
+  } catch (error) {
+    console.error('❌ Ошибка при поиске пользователей:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Ошибка при поиске пользователей' 
+    });
+  }
+});
+
+// 👤 ПОЛУЧЕНИЕ ИНФОРМАЦИИ О КОНКРЕТНОМ ПОЛЬЗОВАТЕЛЕ ПО ID
+router.get('/user-info/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Проверяем что userId предоставлен и является числом
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Некорректный ID пользователя' 
+      });
+    }
+
+    console.log(`👤 Запрос информации о пользователе: ${userId}`);
+
+    // Ищем пользователя в базе данных
+    const user = await getUserById(parseInt(userId));
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Пользователь не найден' 
+      });
+    }
+
+    // Форматируем ответ с информацией о пользователе
+    const userInfo = {
+      id: user.id,
+      email: user.email,
+      // Генерируем аватар на основе ID пользователя
+      avatar: `https://ui-avatars.com/api/?name=${user.id}&background=4294ff&color=ffffff&bold=true`,
+      // Используем ID как имя пользователя для отображения
+      displayName: `User${user.id}`,
+      is_verified: user.is_verified,
+      last_login: user.last_login,
+      created_at: user.created_at
+    };
+
+    res.json({ 
+      success: true,
+      user: userInfo
+    });
+
+  } catch (error) {
+    console.error('❌ Ошибка при получении информации о пользователе:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Ошибка при получении информации о пользователе' 
+    });
+  }
+});
+
+// ==================== СЛУЖЕБНЫЕ ЭНДПОИНТЫ ====================
+
+// 🗄️ ИНИЦИАЛИЗАЦИЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ
 router.get('/init-db', async (req, res) => {
   try {
     const isConnected = await testConnection();
@@ -309,5 +419,24 @@ router.get('/init-db', async (req, res) => {
     res.status(500).json({ success: false, message: 'Ошибка инициализации БД' });
   }
 });
+
+// 🧹 РУЧНАЯ ОЧИСТКА УСТАРЕВШИХ КОДОВ (для администрирования)
+router.post('/cleanup-codes', authenticateToken, async (req, res) => {
+  try {
+    const cleanedCount = await cleanupExpiredCodes();
+    res.json({ 
+      success: true, 
+      message: `Очищено ${cleanedCount} устаревших кодов` 
+    });
+  } catch (error) {
+    console.error('❌ Ошибка при очистке кодов:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ошибка при очистке кодов' 
+    });
+  }
+});
+
+// ==================== ЭКСПОРТ РОУТЕРА ====================
 
 module.exports = router;

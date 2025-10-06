@@ -117,6 +117,41 @@ const getUserByEmail = async (email) => {
   }
 };
 
+// Функция для получения пользователя по ID
+const getUserById = async (userId) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, is_verified, last_login, created_at FROM email WHERE id = $1',
+      [userId]
+    );
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('❌ Ошибка при получении пользователя по ID:', error);
+    return null;
+  }
+};
+
+// Функция для поиска пользователей по ID или email
+const searchUsers = async (searchTerm) => {
+  try {
+    // Ищем пользователей по ID (если searchTerm - число) или по email
+    const query = `
+      SELECT id, email, is_verified, last_login, created_at 
+      FROM email 
+      WHERE id::text = $1 OR email ILIKE $2
+      LIMIT 10
+    `;
+    
+    const searchPattern = `%${searchTerm}%`;
+    const result = await pool.query(query, [searchTerm, searchPattern]);
+    
+    return result.rows;
+  } catch (error) {
+    console.error('❌ Ошибка при поиске пользователей:', error);
+    return [];
+  }
+};
+
 // Функция для очистки устаревших кодов
 const cleanupExpiredCodes = async () => {
   try {
@@ -137,5 +172,7 @@ module.exports = {
   upsertUserWithCode,
   verifyCode,
   getUserByEmail,
+  getUserById,
+  searchUsers,
   cleanupExpiredCodes
 };

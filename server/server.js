@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
-const { testConnection } = require('./database'); // Импортируем проверку подключения
+const { testConnection } = require('./database');
 
 dotenv.config();
 
@@ -16,6 +16,13 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// ЛОГИРОВАНИЕ ВСЕХ ЗАПРОСОВ
+app.use((req, res, next) => {
+  console.log(`📨 ${new Date().toISOString()} ${req.method} ${req.url}`);
+  console.log('📦 Body:', req.body);
+  next();
+});
+
 // Проверяем подключение к БД при старте сервера
 const initializeDatabase = async () => {
   console.log('Проверка подключения к PostgreSQL...');
@@ -27,33 +34,45 @@ const initializeDatabase = async () => {
   }
 };
 
-app.use(authRoutes);
+// ПОДКЛЮЧАЕМ РОУТЫ
+app.use('/api/auth', authRoutes);
 
-// Остальной код без изменений...
-app.use('/api/protected', (req, res, next) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) {
-    return res.status(401).json({ 
-      success: false,
-      message: 'Требуется аутентификация'
-    });
-  }
-  next();
+// ТЕСТОВЫЙ ЭНДПОИНТ ДЛЯ ПРОВЕРКИ
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Сервер работает!' });
 });
 
+// ПРОСТОЙ ЭНДПОИНТ ДЛЯ ТЕСТИРОВАНИЯ EMAIL
+app.post('/api/auth/simple-email', (req, res) => {
+  console.log('✅ Простой эндпоинт вызван! Email:', req.body.email);
+  res.json({ 
+    success: true, 
+    message: 'Тестовый ответ от сервера!',
+    code: '123456'
+  });
+});
+
+// Обработка ошибок
 app.use((err, req, res, next) => {
-  console.error('Ошибка сервера:', err);
+  console.error('❌ Ошибка сервера:', err);
   res.status(500).json({
     message: 'Ошибка сервера'
   });
 });
 
+// Обработка несуществующих маршрутов
 app.use((req, res) => {
+  console.log(`❌ Маршрут не найден: ${req.method} ${req.url}`);
   res.status(404).json({ message: 'Страница не найдена' });
 });
 
-// Запускаем сервер только после инициализации БД
+// Запускаем сервер
 app.listen(PORT, async () => {
   await initializeDatabase();
-  console.log(`Сервер стартовал на порту: ${PORT}`);
+  console.log(`✅ Сервер стартовал на порту: ${PORT}`);
+  console.log(`🔗 URL: http://localhost:${PORT}`);
+  console.log('📧 Доступные эндпоинты:');
+  console.log('   GET  /api/test');
+  console.log('   POST /api/auth/simple-email');
+  console.log('   POST /api/auth/email');
 });
