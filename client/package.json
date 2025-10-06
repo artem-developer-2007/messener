@@ -7,10 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "@tauri-apps/api": "^1.0.0"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.13",
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/cli": "^2.8.4",
     "axios": "^1.11.0",
     "framer-motion": "^12.23.12",
     "react": "^19.1.1",

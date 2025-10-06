@@ -18,7 +18,8 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
   return (
     <div className="w-full md:w-1/5 flex flex-col border-r border-slate-700">
       <div className="p-4 border-b border-slate-700">
-        <div className="relative">
+        <div className="relative flex gap-3">
+          <h1>...</h1>
           <input 
             type="text" 
             placeholder="Поиск контактов..." 
@@ -26,7 +27,7 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <i className="fas fa-search absolute left-3 top-3 text-slate-400"></i>
+          <i className="fas fa-search absolute left-8 top-3 text-slate-400"></i>
         </div>
       </div>
       

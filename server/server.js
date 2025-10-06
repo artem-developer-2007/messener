@@ -2,54 +2,58 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
+const { testConnection } = require('./database'); // Импортируем проверку подключения
 
-// МОЖНО БРАТЬ ДАННЫЕ ИЗ .ENV
 dotenv.config();
 
-// ЗАПУСК СЕРВЕРА, ПОРТ
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// MIDDLEWARE ДЛЯ ДАННЫХ
+// MIDDLEWARE
 app.use(cors({
-  origin: 'http://localhost:5173', // КУДА ОТПРАВЛЯТЬ ДАННЫЕ
-  credentials: true // МОЖНО ЛИ ОТПРАВЛЯТЬ ДАННЫЕ(ДА)
+  origin: 'http://localhost:5173',
+  credentials: true
 }));
-app.use(express.json()); // МОЖНО ИСПОЛЬЗОВАТЬ JSON
+app.use(express.json());
 
-app.use(authRoutes); // ОТПРАВКА ПИСЬМА НА ПОЧТУ
+// Проверяем подключение к БД при старте сервера
+const initializeDatabase = async () => {
+  console.log('Проверка подключения к PostgreSQL...');
+  const isConnected = await testConnection();
+  if (isConnected) {
+    console.log('База данных успешно подключена');
+  } else {
+    console.log('Проблемы с подключением к базе данных');
+  }
+};
 
-// MIDDLEWARE ДЛЯ ПРОВЕРКИ АУТЕНТИФИКАЦИИ
+app.use(authRoutes);
+
+// Остальной код без изменений...
 app.use('/api/protected', (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-
-  // ЕСЛИ НЕТУ ТОКЕНА
   if (!token) {
     return res.status(401).json({ 
-      success: false, //
-      message: 'Требуется аутентификация' //
+      success: false,
+      message: 'Требуется аутентификация'
     });
   }
-  
-  // ЗДЕСЬ МОЖНО ДОБАВИТЬ ПРОВЕРКУ JWT-ТОКЕНА
   next();
 });
 
-// ОБРАБОТКА ОШИБОК, NEXT() НИКУДА НЕ ИДЕТ, НО ПУСТЬ БУДЕТ
 app.use((err, req, res, next) => {
   console.error('Ошибка сервера:', err);
   res.status(500).json({
-    message: 'Оибка сервера'
+    message: 'Ошибка сервера'
   });
 });
 
-// ОБРАБОТКА 404 СТРАНИЦЫ
 app.use((req, res) => {
   res.status(404).json({ message: 'Страница не найдена' });
 });
 
-// ЗАПУСК СЕРВЕРА
-app.listen(PORT, () => {
+// Запускаем сервер только после инициализации БД
+app.listen(PORT, async () => {
+  await initializeDatabase();
   console.log(`Сервер стартовал на порту: ${PORT}`);
-  console.log(`Email сервис: ${process.env.SMTP_HOST}`);
 });

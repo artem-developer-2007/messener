@@ -17,7 +17,7 @@ createRoot(document.getElementById('root')).render(
         <Route path='/login' element={<Auth />} />
         <Route path='/messenger1' element={<Messenger />} />
         <Route 
-          path='/messenger'  // УБРАЛИ :userId
+          path='/messenger'
           element={
             <ProtectedRoute>
               <Messenger />

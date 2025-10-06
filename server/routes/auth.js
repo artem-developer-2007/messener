@@ -3,15 +3,22 @@ const router = express.Router();
 const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const { 
+  upsertUserWithCode, 
+  verifyCode, 
+  getUserByEmail,
+  cleanupExpiredCodes,
+  testConnection 
+} = require('../database'); // Импортируем наши функции из database.js
 
-// ХРАНИЛИЩЕ КОДОВ(ПОТОМ ИСПОЛЬЗУЮ БД)
-const emailCodes = new Map();
-const users = new Map(); // Временное хранилище пользователей
+// УДАЛЯЕМ временные хранилища - теперь используем PostgreSQL!
+// const emailCodes = new Map(); ← УДАЛИТЬ
+// const users = new Map(); ← УДАЛИТЬ
 
 // СЕКРЕТНЫЙ КЛЮЧ ДЛЯ JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// ГЕНЕРАЦИЯ 6-НАЧНОГО КОДА
+// ГЕНЕРАЦИЯ 6-ЗНАЧНОГО КОДА
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -22,7 +29,7 @@ function generateToken(email, userId) {
     { 
       email, 
       userId, 
-      iat: Math.floor(Date.now() / 1000), // время создания
+      iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 час
     },
     JWT_SECRET
@@ -32,35 +39,31 @@ function generateToken(email, userId) {
 // СОЗДАНИЕ ТРАНСПОРТЕРА ДЛЯ EMAIL-СЕРВЕРА
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST, // ХОСТ
-    port: parseInt(process.env.SMTP_PORT) || 465, // ПОРТ
-    secure: true, // ИСПОЛЬЗУЕТ SSL/TLS ШИФРОВАНИЕ
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT) || 465,
+    secure: true,
     auth: {
-      user: process.env.SMTP_USER, // ЛОГИН
-      pass: process.env.SMTP_PASS, // ПАРОЛЬ(СГЕНЕРИРОВАННЫЙ В ИМЕЙЛЕ)
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
     tls: {
-      rejectUnauthorized: false //..........
+      rejectUnauthorized: false
     }
   });
 };
 
-// ПРОВЕРКА ВАЛИДНОСТЬ EMAIL
+// ПРОВЕРКА ВАЛИДНОСТИ EMAIL
 function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // 
-  return emailRegex.test(email); // 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }
 
-// ОЧИСТКА СТАРЫХ КОДОВ
-function cleanupOldCodes() {
-  const now = Date.now(); // ТЕКУЩЕЕ ВРЕМЯ
-  const tenMinutesAgo = now - (10 * 60 * 1000); // КОД БУДЕТ СУЩЕСТВОВАТЬ 10 МИНУТ
-  
-  for (let [email, data] of emailCodes.entries()) {
-    if (data.createdAt < tenMinutesAgo) {
-      emailCodes.delete(email);
-      console.log(`Cleaned up expired code for: ${email}`);
-    }
+// ОЧИСТКА СТАРЫХ КОДОВ (теперь используем PostgreSQL)
+async function cleanupOldCodes() {
+  try {
+    await cleanupExpiredCodes();
+  } catch (error) {
+    console.error('❌ Ошибка при очистке кодов:', error);
   }
 }
 
@@ -88,10 +91,9 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Отправка email с кодом
+// Отправка email с кодом (ОБНОВЛЕНО для работы с PostgreSQL)
 router.post('/email', async (req, res) => {
   try {
-    // Тело запроса
     const { email } = req.body;
 
     // Валидация
@@ -109,35 +111,30 @@ router.post('/email', async (req, res) => {
       });
     }
 
-    // СОЗДАЕМ ИЛИ ПОЛУЧАЕМ USERID ДЛЯ EMAIL
-    let userId = users.get(email);
-    if (!userId) {
-      userId = uuidv4();
-      users.set(email, userId);
-      console.log(`Создан новый пользователь: ${email} -> ${userId}`);
-    } else {
-      console.log(`Найден существующий пользователь: ${email} -> ${userId}`);
+    // Генерируем код и время expiration
+    const code = generateCode();
+    const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
+
+    // СОХРАНЯЕМ В POSTGRESQL (создаем или обновляем пользователя)
+    const dbResult = await upsertUserWithCode(email, code, codeExpiresAt);
+    
+    if (!dbResult.success) {
+      return res.status(500).json({ 
+        success: false,
+        message: 'Ошибка при сохранении кода в базу данных' 
+      });
     }
 
-    // Генерация и сохранение кода
-    const code = generateCode();
-    emailCodes.set(email, {
-      code,
-      createdAt: Date.now(),
-      attempts: 0,
-      userId: userId // Сохраняем userId для кода
-    });
-
     // Очистка старых кодов
-    cleanupOldCodes();
+    await cleanupOldCodes();
 
-    // Настройка транспортера - ИСПРАВЛЕНО!
+    // Настройка транспортера
     const transporter = createTransporter();
 
     // Проверяем соединение с SMTP сервером
     try {
       await transporter.verify();
-      console.log('SMTP connection verified');
+      console.log('✅ SMTP connection verified');
     } catch (verifyError) {
       console.error('❌ SMTP connection failed:', verifyError);
       return res.status(500).json({ 
@@ -168,38 +165,41 @@ router.post('/email', async (req, res) => {
       `
     };
 
-    // Отправка письма ВСЕГДА (и в development, и в production)
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent to: ${email}`);
-    
-    // Дополнительно логируем для development
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('=== DEVELOPMENT INFO ===');
-      console.log('📧 Email:', email);
-      console.log('🔢 Code:', code);
-      console.log('👤 User ID:', userId);
-      console.log('=======================');
+    // Отправка письма
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Email sent to: ${email}`);
+      
+      // Дополнительно логируем для development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('=== DEVELOPMENT INFO ===');
+        console.log('📧 Email:', email);
+        console.log('🔢 Code:', code);
+        console.log('⏰ Expires:', codeExpiresAt);
+        console.log('=======================');
+      }
+      
+    } catch (sendError) {
+      console.error('❌ Email sending failed:', sendError);
+      throw sendError;
     }
-    
-  } catch (sendError) {
-    console.error('❌ Email sending failed:', sendError);
-    throw sendError; // Перебрасываем ошибку для обработки выше
-  }
 
     res.json({ 
       success: true,
       message: 'Код отправлен на вашу почту',
-      code: process.env.NODE_ENV === 'production' ? null : code,
-      userId: userId // Возвращаем userId для отладки
+      code: process.env.NODE_ENV === 'production' ? null : code
     });
 
   } catch (error) {
     console.error('❌ Email sending error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Ошибка при отправке кода' 
+    });
   }
 });
 
-// Проверка кода
+// Проверка кода (ОБНОВЛЕНО для работы с PostgreSQL)
 router.post('/verify-code', async (req, res) => {
   try {
     const { email, code } = req.body;
@@ -211,53 +211,19 @@ router.post('/verify-code', async (req, res) => {
       });
     }
 
-    const storedData = emailCodes.get(email);
+    // ПРОВЕРЯЕМ КОД ЧЕРЕЗ POSTGRESQL
+    const verificationResult = await verifyCode(email, code);
 
-    if (!storedData) {
+    if (!verificationResult.success) {
       return res.status(400).json({ 
         success: false,
-        message: 'Код не найден или истек срок действия' 
+        message: verificationResult.message 
       });
     }
 
-    // Проверка срока действия (10 минут)
-    if (Date.now() - storedData.createdAt > 10 * 60 * 1000) {
-      emailCodes.delete(email);
-      return res.status(400).json({ 
-        success: false,
-        message: 'Код истек. Запросите новый.' 
-      });
-    }
-
-    // Проверка попыток
-    if (storedData.attempts >= 3) {
-      emailCodes.delete(email);
-      return res.status(400).json({ 
-        success: false,
-        message: 'Слишком много попыток. Запросите новый код.' 
-      });
-    }
-
-    // Проверка кода
-    if (storedData.code !== code) {
-      storedData.attempts++;
-      emailCodes.set(email, storedData);
-      
-      return res.status(400).json({ 
-        success: false,
-        message: `Неверный код. Осталось попыток: ${3 - storedData.attempts}`,
-        attemptsLeft: 3 - storedData.attempts
-      });
-    }
-
-    // Успешная проверка - используем сохраненный userId из кода
-    const userId = storedData.userId;
-
-    // Генерируем JWT токен (он будет разным, но для одного userId)
+    // Успешная проверка - генерируем JWT токен
+    const userId = verificationResult.user.id;
     const token = generateToken(email, userId);
-
-    // Удаляем использованный код
-    emailCodes.delete(email);
 
     console.log(`✅ Успешная аутентификация: ${email} -> ${userId}`);
     console.log(`🔑 Сгенерирован токен для userId: ${userId}`);
@@ -267,11 +233,12 @@ router.post('/verify-code', async (req, res) => {
       message: 'Код подтвержден успешно! ✅',
       token: token,
       userId: userId,
-      email: email
+      email: email,
+      user: verificationResult.user
     });
 
   } catch (error) {
-    console.error('Code verification error:', error);
+    console.error('❌ Code verification error:', error);
     res.status(500).json({ 
       success: false,
       message: 'Ошибка при проверке кода' 
@@ -287,54 +254,60 @@ router.get('/verify-token', authenticateToken, (req, res) => {
   });
 });
 
-// Получение информации о пользователе
-router.get('/user/:userId', authenticateToken, (req, res) => {
-  const { userId } = req.params;
-  
-  // Проверяем, что пользователь запрашивает свои данные
-  if (req.user.userId !== userId) {
-    return res.status(403).json({ 
-      success: false,
-      message: 'Доступ запрещен' 
-    });
-  }
-
-  // Ищем пользователя по userId
-  const userEntry = Array.from(users.entries()).find(([email, id]) => id === userId);
-  
-  if (!userEntry) {
-    return res.status(404).json({ 
-      success: false,
-      message: 'Пользователь не найден' 
-    });
-  }
-
-  res.json({ 
-    success: true,
-    user: {
-      userId: userId,
-      email: userEntry[0] // email из хранилища
+// Получение информации о пользователе (ОБНОВЛЕНО для работы с PostgreSQL)
+router.get('/user/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Проверяем, что пользователь запрашивает свои данные
+    if (req.user.userId !== userId) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Доступ запрещен' 
+      });
     }
-  });
+
+    // Ищем пользователя в PostgreSQL
+    const user = await getUserByEmail(req.user.email);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Пользователь не найден' 
+      });
+    }
+
+    res.json({ 
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        is_verified: user.is_verified,
+        last_login: user.last_login,
+        created_at: user.created_at
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error getting user:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Ошибка при получении данных пользователя' 
+    });
+  }
 });
 
-// Получение userId по email (для отладки)
-router.get('/user-by-email/:email', (req, res) => {
-  const { email } = req.params;
-  const userId = users.get(email);
-  
-  if (!userId) {
-    return res.status(404).json({ 
-      success: false,
-      message: 'Пользователь не найден' 
-    });
+// Инициализация подключения к базе при старте
+router.get('/init-db', async (req, res) => {
+  try {
+    const isConnected = await testConnection();
+    if (isConnected) {
+      res.json({ success: true, message: 'PostgreSQL подключен' });
+    } else {
+      res.status(500).json({ success: false, message: 'Ошибка подключения к PostgreSQL' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Ошибка инициализации БД' });
   }
-
-  res.json({ 
-    success: true,
-    email: email,
-    userId: userId
-  });
 });
 
 module.exports = router;

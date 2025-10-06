@@ -7,4 +7,13 @@ export default defineConfig({
   plugins: [react(),
     tailwindcss()
   ],
+  server: {
+    port: 5173,
+    strictPort: true,
+    host: true
+  },
+  // ВАЖНО: явно укажите папку сборки
+  build: {
+    outDir: './dist'
+  }
 })
