@@ -12,6 +12,11 @@ const {
   testConnection 
 } = require('../database');
 
+// const imagePath = path;
+// const imageBuffer = fs.readFileSync(imagePath);
+// const base64Image = imageBuffer.toString('base64');
+// const imageSrc = `data:image/png;base64,${base64Image}`;
+
 // СЕКРЕТНЫЙ КЛЮЧ ДЛЯ JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -148,18 +153,25 @@ router.post('/email', async (req, res) => {
       to: email,
       subject: 'Ваш код подтверждения 🔐',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Код подтверждения</h2>
-          <p>Для завершения аутентификации используйте следующий код:</p>
-          <div style="background: #f8f9fa; padding: 20px; text-align: center; margin: 20px 0;">
-            <h1 style="color: #4294ff; font-size: 32px; letter-spacing: 5px; margin: 0;">
-              ${code}
-            </h1>
-          </div>
-          <p style="color: #666; font-size: 14px;">
-            Код действителен в течение 10 минут.<br>
-            Если вы не запрашивали этот код, проигнорируйте это письмо.
-          </p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #16203b, #ce4a1e); padding: 20px; border-radius: 5px; text-align: center;">
+
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src=".../client/src/img/bird.png" style="width: 150px; height: 150px; display: block; margin: 0 auto;">
+            </div>
+            
+            <h2 style="color: #ffffff;">Код подтверждения</h2>
+            <p style="color: #ffffff;">Для завершения аутентификации используйте следующий код:</p>
+            
+            <div style="padding: 15px; text-align: center; margin: 20px 0;">
+                <div style="color: #d17b2b; font-size: 28px; font-weight: bold; letter-spacing: 8px; margin: 0; background-color: white; border-radius: 7px; padding: 15px 10px; display: inline-block; min-width: 200px;">
+                    ${code}
+                </div>
+            </div>
+            
+            <p style="color: #ffffff; font-size: 14px;">
+                Код действителен в течение 10 минут.<br>
+                Если вы не запрашивали этот код, проигнорируйте это письмо.
+            </p>
         </div>
       `
     };

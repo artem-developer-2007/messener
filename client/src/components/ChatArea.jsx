@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import picture from '../img/robot.png'
+import picture from '../img/bird.png'
 
 const ChatArea = ({ activeContact, onSendMessage }) => {
   const [message, setMessage] = useState('');
@@ -38,11 +38,12 @@ const ChatArea = ({ activeContact, onSendMessage }) => {
 
   if (!activeContact) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900  to-orange-900">
         <div className="text-center">
           <div className="w-72 h-72 flex items-center justify-center mx-auto mb-4">
             <img src={picture}
-            className='opacity-25'
+            width={300}
+            className='opacity-50'
             onDragStart={handleDragStart}
             onContextMenu={handleContextMenu}/>
           </div>

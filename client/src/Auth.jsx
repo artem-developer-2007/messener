@@ -1,5 +1,5 @@
 import './App.css';
-import picture from './img/robot.png';
+import picture from './img/bird.png';
 import axios from 'axios';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 function Auth() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [secondScreenMessage, setSecondScreenMessage] = useState(''); // Отдельное сообщение для второго экрана
+  const [secondScreenMessage, setSecondScreenMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('first');
   const [storedEmail, setStoredEmail] = useState('');
@@ -28,102 +28,127 @@ function Auth() {
   const [code5, setCode5] = useState('');
   const [code6, setCode6] = useState('');
 
-  // ЕСЛИ ПЕРВЙ ЭКРАН ИСТИННЫЙ - ПЕРЕКЛЮЧИТЬ НА ВТОРОЙ, ЕСЛИ ЛОЖНЫЙ - НА ПЕРВЫЙ
+  // ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ВСТАВКИ ИЗ БУФЕРА ОБМЕНА
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text');
+    
+    // Очищаем от пробелов и оставляем только цифры
+    const numbers = pastedData.replace(/\D/g, '').slice(0, 6);
+    
+    if (numbers.length === 6) {
+      // Распределяем цифры по инпутам
+      const digits = numbers.split('');
+      setCode1(digits[0] || '');
+      setCode2(digits[1] || '');
+      setCode3(digits[2] || '');
+      setCode4(digits[3] || '');
+      setCode5(digits[4] || '');
+      setCode6(digits[5] || '');
+      
+      // Фокусируемся на последнем инпуте
+      setTimeout(() => {
+        if (inputRef6.current) {
+          inputRef6.current.focus();
+        }
+      }, 0);
+    }
+  };
+
+  // ЕСЛИ ПЕРВЫЙ ЭКРАН ИСТИННЫЙ - ПЕРЕКЛЮЧИТЬ НА ВТОРОЙ, ЕСЛИ ЛОЖНЫЙ - НА ПЕРВЫЙ
   const toggleScreen = () => {
     setCurrentScreen(currentScreen === 'first' ? 'second' : 'first');
   };
 
   // ПРОВЕРКА ВАЛИДНОСТИ EMAIL-А
   const handleSubmit = async () => {
-  if (!email || !email.includes('@')) {
-    setMessage('Пожалуйста, введите корректный email');
-    return;
-  }
-
-  setIsLoading(true);
-  setMessage('');
-
-  try {
-    console.log('🔄 Отправка запроса на /api/auth/email...');
-    
-    // ИЗМЕНИТЕ ЭТУ СТРОКУ - добавить /api/auth/
-    const response = await axios.post('http://localhost:5000/api/auth/email', {
-      email: email
-    });
-
-    console.log('✅ Ответ от сервера:', response.data);
-    
-    setMessage(response.data.message || 'Email успешно отправлен!');
-    setStoredEmail(email);
-    setEmail('');
-
-    setTimeout(() => {
-      toggleScreen();
-    }, 500);
-
-  } catch (error) {
-    console.error('❌ Ошибка отправки:', error);
-    
-    if (error.response) {
-      setMessage(error.response.data.message || `Ошибка сервера: ${error.response.status}`);
-    } else if (error.request) {
-      setMessage('Нет ответа от сервера. Проверьте подключение.');
-    } else {
-      setMessage('Произошла ошибка при отправке');
+    if (!email || !email.includes('@')) {
+      setMessage('Пожалуйста, введите корректный email');
+      return;
     }
-  } finally {
-    setIsLoading(false);
-  }
-};
+
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      console.log('🔄 Отправка запроса на /api/auth/email...');
+      
+      const response = await axios.post('http://localhost:5000/api/auth/email', {
+        email: email
+      });
+
+      console.log('✅ Ответ от сервера:', response.data);
+      
+      setMessage(response.data.message || 'Email успешно отправлен!');
+      setStoredEmail(email);
+      setEmail('');
+
+      setTimeout(() => {
+        toggleScreen();
+      }, 500);
+
+    } catch (error) {
+      console.error('❌ Ошибка отправки:', error);
+      
+      if (error.response) {
+        setMessage(error.response.data.message || `Ошибка сервера: ${error.response.status}`);
+      } else if (error.request) {
+        setMessage('Нет ответа от сервера. Проверьте подключение.');
+      } else {
+        setMessage('Произошла ошибка при отправке');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // ПРОВЕРКА КОДА И АУТЕНТИФИКАЦИЯ
   const handleVerifyCode = async () => {
-  const code = code1 + code2 + code3 + code4 + code5 + code6;
-  
-  if (code.length !== 6) {
-    setSecondScreenMessage('Пожалуйста, введите полный код');
-    return;
-  }
-
-  if (!storedEmail) {
-    setSecondScreenMessage('Ошибка: email не найден');
-    return;
-  }
-
-  setIsLoading(true);
-  setSecondScreenMessage('');
-
-  try {
-    // ИЗМЕНИТЕ И ЭТОТ URL
-    const response = await axios.post('http://localhost:5000/api/auth/verify-code', {
-      email: storedEmail,
-      code: code
-    });
-
-    if (response.data.success) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userEmail', storedEmail);
-      
-      setSecondScreenMessage('Успешная аутентификация!');
-      
-      setTimeout(() => {
-        navigate('/messenger');
-      }, 1000);
-    } else {
-      setSecondScreenMessage(response.data.message);
-    }
-  } catch (error) {
-    console.error('Ошибка проверки кода:', error);
+    const code = code1 + code2 + code3 + code4 + code5 + code6;
     
-    if (error.response) {
-      setSecondScreenMessage(error.response.data.message || 'Ошибка сервера');
-    } else {
-      setSecondScreenMessage('Произошла ошибка при проверке кода');
+    if (code.length !== 6) {
+      setSecondScreenMessage('Пожалуйста, введите полный код');
+      return;
     }
-  } finally {
-    setIsLoading(false);
-  }
-};
+
+    if (!storedEmail) {
+      setSecondScreenMessage('Ошибка: email не найден');
+      return;
+    }
+
+    setIsLoading(true);
+    setSecondScreenMessage('');
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/verify-code', {
+        email: storedEmail,
+        code: code
+      });
+
+      if (response.data.success) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('userEmail', storedEmail);
+        
+        setSecondScreenMessage('Успешная аутентификация!');
+        
+        setTimeout(() => {
+          navigate('/messenger');
+        }, 1000);
+      } else {
+        setSecondScreenMessage(response.data.message);
+      }
+    } catch (error) {
+      console.error('Ошибка проверки кода:', error);
+      
+      if (error.response) {
+        setSecondScreenMessage(error.response.data.message || 'Ошибка сервера');
+      } else {
+        setSecondScreenMessage('Произошла ошибка при проверке кода');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // ЕСЛИ ПОЛЬЗОВАТЕЛЬ НАЖАЛ ENTER - ОТПРАВИТЬ EMAIL НА СЕРВЕР
   const handleKeyPress = (e) => {
@@ -136,21 +161,18 @@ function Auth() {
     }
   };
 
-  //
   const handleDragStart = (e) => {
     e.preventDefault();
   };
 
-  //
   const handleContextMenu = (e) => {
     e.preventDefault();
   };
 
-  //
   const handleChange = (e, currentRef, nextRef) => {
-    const value = e.target.value;
+    const value = e.target.value.replace(/\D/g, ''); // Оставляем только цифры
 
-    // ЕСЛИ ТЕКУЩИЙ ИНПУТ АКТИВЕН - МЕНЯ ЕГО ЗНАЧЕНИ
+    // ЕСЛИ ТЕКУЩИЙ ИНПУТ АКТИВЕН - МЕНЯ ЕГО ЗНАЧЕНИЕ
     if (currentRef === inputRef1) setCode1(value);
     if (currentRef === inputRef2) setCode2(value);
     if (currentRef === inputRef3) setCode3(value);
@@ -158,7 +180,7 @@ function Auth() {
     if (currentRef === inputRef5) setCode5(value);
     if (currentRef === inputRef6) setCode6(value);
 
-    // ПЕРЕХОД НА СЛЕДУЮЩИЙ ИНПУТ(ЕСЛИ ОН СУЩЕСТВУЕТ)
+    // ПЕРЕХОД НА СЛЕДУЮЩИЙ ИНПУТ (ЕСЛИ ОН СУЩЕСТВУЕТ И ВВЕДЕНА ЦИФРА)
     if (value && nextRef && nextRef.current) {
       nextRef.current.focus();
     }
@@ -180,7 +202,7 @@ function Auth() {
     if (currentScreen === 'second' && inputRef1.current) {
       const timer = setTimeout(() => {
         inputRef1.current.focus();
-      }, 250); // Задержка после анимации перехода
+      }, 250);
 
       return () => clearTimeout(timer);
     }
@@ -189,8 +211,8 @@ function Auth() {
   return (
     <>
       {/* ОБЩИЙ КОНТЕЙНЕР */}
-      <div className="relative h-screen overflow-hidden bg-neutral-900">
-        
+      <div className="relative h-screen overflow-hidden bg-gradient-to-br from-slate-900 to-orange-900">
+
         {/* ПЕРВЫЙ ЭКРАН - уезжает вверх */}
         <div className={`absolute inset-0 transition-transform duration-500 ease-in-out ${
           currentScreen === 'first' 
@@ -201,8 +223,8 @@ function Auth() {
           <div className="flex flex-col items-center justify-center pt-32">
             <img 
               src={picture} 
-              width={230} 
-              className='flex justify-center' 
+              width={230}
+              className='flex justify-center opacity-75 object-cover h-auto'
               alt="Robot" 
               draggable="false"
               onDragStart={handleDragStart}
@@ -219,7 +241,7 @@ function Auth() {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <svg className="h-5 w-5 text-amber-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                       <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                     </svg>
@@ -231,12 +253,11 @@ function Auth() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="example@mail.com"
+                    placeholder="example@mail.ru"
                     disabled={isLoading}
                     autoComplete="off"
-                    className="block w-full pl-10 pr-3 py-4 text-white rounded-lg bg-neutral-800 focus:outline-none
-                    px-4 border border-gray-700 outline-none transition-all duration-500
-                    focus:shadow-[0_0_10px_4px_rgba(59,130,246,0.5)] focus:shadow-blue-500/50 placeholder-gray-500"
+                    className="block w-full pl-10 pr-3 py-4 text-white rounded-lg bg-none focus:outline-none
+                    px-4 border border-amber-50 outline-none transition-all duration-500 placeholder-amber-50"
                   />
                 </div>
               </div>
@@ -245,7 +266,7 @@ function Auth() {
                 onClick={handleSubmit}
                 disabled={isLoading}
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium border-none
-                  text-white bg-gradient-to-r from-blue-600 to-blue-400 hover:cursor-pointer"
+                  text-white bg-gradient-to-r from-orange-700 to-orange-600 hover:cursor-pointer"
               >
                 {isLoading ? (
                   <div className="flex items-center">
@@ -280,19 +301,18 @@ function Auth() {
             : 'translate-x-full'
         }`}>
           
-          <div className="h-full bg-neutral-900 flex flex-col items-center justify-center">
+          <div className="h-full bg-gradient-to-br from-slate-900 to-orange-900 flex flex-col items-center justify-center pb-15">
             
             {/* Кнопка назад */}
             <button 
               onClick={() => {
-                // ПРИ ВОЗВРАТЕ ОЧИЩАЕМ КОД И СОХРАНЕННЫЙ EMAIL
                 setStoredEmail('');
                 setCode1(''); setCode2(''); setCode3(''); 
                 setCode4(''); setCode5(''); setCode6('');
-                setSecondScreenMessage(''); // Очищаем сообщение второго экрана
+                setSecondScreenMessage('');
                 toggleScreen();
               }}
-              className="absolute top-6 left-6 flex items-center text-blue-400 hover:text-blue-300 transition-colors"
+              className="absolute top-6 left-6 flex items-center text-amber-50 hover:text-blue-300 transition-colors"
             >
               <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -323,9 +343,10 @@ function Auth() {
                     ref,
                     index > 0 ? [null, inputRef1, inputRef2, inputRef3, inputRef4, inputRef5][index] : null
                   )}
+                  onPaste={handlePaste} // Добавляем обработчик вставки
                   onKeyPress={handleKeyPress}
-                  className="w-16 h-16 border text-white border-gray-600 rounded-lg text-center text-2xl 
-                           bg-neutral-800 focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-16 h-16 border text-white border-orange-400 rounded-lg text-center text-2xl 
+                           bg-none focus:outline-none focus:border-amber-700 transition-colors"
                 />
               ))}
             </div>
@@ -334,17 +355,16 @@ function Auth() {
               onClick={handleVerifyCode}
               disabled={isLoading}
               className="mt-10 w-64 py-3 px-4 rounded-lg shadow-sm text-sm font-medium
-                text-white bg-gradient-to-r from-blue-600 to-blue-400 hover:cursor-pointer
+                text-white bg-gradient-to-r from-orange-700 to-orange-600 hover:cursor-pointer
                 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'ПРОВЕРКА...' : 'ПОДТВЕРДИТЬ'}
             </button>
 
-            {/* СООБЩЕНИЕ ТОЛЬКО ДЛЯ ВТОРОГО ЭКРАНА - ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ ОШИБКАХ */}
             {secondScreenMessage && (
-              <div className={`mt-4 p-3 rounded-lg text-sm ${
-                secondScreenMessage.includes('успешно') 
-                  ? 'bg-green-500/20 text-green-300' 
+              <div className={`absolute bottom-82  left-1/2 transform -translate-x-1/2 p-3 rounded-lg text-sm min-w-64 text-center ${
+                secondScreenMessage.includes('ау')
+                  ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
                   : 'bg-red-500/20 text-red-300'
               }`}>
                 {secondScreenMessage}

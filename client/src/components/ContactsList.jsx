@@ -93,7 +93,7 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
   return (
     <div className="w-full md:w-1/5 flex flex-col border-r border-slate-700">
       {/* ЗАГОЛОВОК И ПОИСК */}
-      <div className="p-4 border-b border-slate-700">
+      <div className="p-4 border-b border-slate-700 color-kontakt">
         <div className="flex items-center gap-2 mb-3">
           <h1 className="text-white font-bold text-lg flex-1">Контакты</h1>
         </div>
@@ -113,8 +113,8 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
           <button
             onClick={handleSearchUsers}
             disabled={isSearching || !searchTerm.trim()}
-            className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg px-3 py-2 transition-colors text-sm"
-            title="Найти пользователя"
+            className="bg-gradient-to-r from-orange-600 to-orange-700 disabled:bg-blue-300 text-white rounded-lg px-3 py-2 transition-colors text-sm"
+            // title="Найти пользователя"
           >
             {isSearching ? '...' : 'Найти чела'}
           </button>
@@ -137,7 +137,7 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
       </div>
 
       {/* ОБЛАСТЬ РЕЗУЛЬТАТОВ И КОНТАКТОВ */}
-      <div className="overflow-y-auto custom-scrollbar flex-grow">
+      <div className="overflow-y-auto custom-scrollbar flex-grow color-kontakt">
         {/* РЕЗУЛЬТАТЫ ПОИСКА */}
         {searchResults.length > 0 && (
           <div className="border-b border-slate-600 mb-4">
