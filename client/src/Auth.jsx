@@ -28,6 +28,9 @@ function Auth() {
   const [code5, setCode5] = useState('');
   const [code6, setCode6] = useState('');
 
+  // WebSocket соединение
+  const [socket, setSocket] = useState(null);
+
   // ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ВСТАВКИ ИЗ БУФЕРА ОБМЕНА
   const handlePaste = (e) => {
     e.preventDefault();
@@ -52,6 +55,81 @@ function Auth() {
           inputRef6.current.focus();
         }
       }, 0);
+    }
+  };
+
+  // ИНИЦИАЛИЗАЦИЯ WEB SOCKET ПРИ УСПЕШНОЙ АУТЕНТИФИКАЦИИ
+  const initializeWebSocket = (token) => {
+    const ws = new WebSocket(`ws://localhost:5000?token=${token}`);
+    
+    ws.onopen = () => {
+      console.log('✅ WebSocket подключен');
+      setSocket(ws);
+    };
+    
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      handleWebSocketMessage(message);
+    };
+    
+    ws.onclose = () => {
+      console.log('❌ WebSocket отключен');
+    };
+    
+    ws.onerror = (error) => {
+      console.error('❌ WebSocket ошибка:', error);
+    };
+    
+    return ws;
+  };
+
+  // ОБРАБОТКА WEB SOCKET СООБЩЕНИЙ
+  const handleWebSocketMessage = (message) => {
+    console.log('📨 WebSocket сообщение:', message);
+    
+    switch (message.type) {
+      case 'connection_established':
+        console.log('✅ WebSocket соединение установлено');
+        break;
+      case 'new_message':
+        console.log('💬 Новое сообщение:', message.data);
+        break;
+      case 'messages_read':
+        console.log('👀 Сообщения прочитаны:', message.data);
+        break;
+      case 'error':
+        console.error('❌ WebSocket ошибка:', message.data);
+        break;
+      default:
+        console.log('❓ Неизвестный тип сообщения:', message.type);
+    }
+  };
+
+  // СИНХРОНИЗАЦИЯ КОНТАКТОВ С БАЗОЙ ДАННЫХ
+  const syncContactsToDB = async (userId, token) => {
+    try {
+      const savedContacts = localStorage.getItem('messengerContacts');
+      if (savedContacts) {
+        const contacts = JSON.parse(savedContacts);
+        
+        // Для каждого контакта добавляем в БД
+        for (const contact of contacts) {
+          try {
+            await axios.post('http://localhost:5000/api/contacts/add', {
+              contactId: contact.id
+            }, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            console.log(`✅ Контакт ${contact.id} добавлен в БД`);
+          } catch (error) {
+            console.log(`ℹ️ Контакт ${contact.id} уже существует или ошибка:`, error.response?.data?.message);
+          }
+        }
+        
+        console.log('✅ Все контакты синхронизированы с БД');
+      }
+    } catch (error) {
+      console.error('❌ Ошибка синхронизации контактов:', error);
     }
   };
 
@@ -126,8 +204,18 @@ function Auth() {
       });
 
       if (response.data.success) {
-        localStorage.setItem('token', response.data.token);
+        const { token, userId } = response.data;
+        
+        // Сохраняем данные в localStorage
+        localStorage.setItem('token', token);
         localStorage.setItem('userEmail', storedEmail);
+        localStorage.setItem('userId', userId);
+        
+        // Инициализируем WebSocket соединение
+        const ws = initializeWebSocket(token);
+        
+        // Синхронизируем контакты с БД
+        await syncContactsToDB(userId, token);
         
         setSecondScreenMessage('Успешная аутентификация!');
         
@@ -207,6 +295,16 @@ function Auth() {
       return () => clearTimeout(timer);
     }
   }, [currentScreen]);
+
+  // ЗАКРЫТИЕ WEB SOCKET ПРИ РАЗМОНТИРОВАНИИ КОМПОНЕНТА
+  useEffect(() => {
+    return () => {
+      if (socket) {
+        socket.close();
+        console.log('🔌 WebSocket соединение закрыто');
+      }
+    };
+  }, [socket]);
 
   return (
     <>
@@ -301,7 +399,7 @@ function Auth() {
             : 'translate-x-full'
         }`}>
           
-          <div className="h-full bg-gradient-to-br from-slate-900 to-orange-900 flex flex-col items-center justify-center pb-15">
+          <div className="h-full bg-gradient-to-br from-slate-900 to-orange-900 flex flex-col items-center justify-center pb-15 relative">
             
             {/* Кнопка назад */}
             <button 
@@ -343,7 +441,7 @@ function Auth() {
                     ref,
                     index > 0 ? [null, inputRef1, inputRef2, inputRef3, inputRef4, inputRef5][index] : null
                   )}
-                  onPaste={handlePaste} // Добавляем обработчик вставки
+                  onPaste={handlePaste}
                   onKeyPress={handleKeyPress}
                   className="w-16 h-16 border text-white border-orange-400 rounded-lg text-center text-2xl 
                            bg-none focus:outline-none focus:border-amber-700 transition-colors"
@@ -361,11 +459,12 @@ function Auth() {
               {isLoading ? 'ПРОВЕРКА...' : 'ПОДТВЕРДИТЬ'}
             </button>
 
+            {/* Сообщение с абсолютным позиционированием - не смещает контент */}
             {secondScreenMessage && (
-              <div className={`absolute bottom-82  left-1/2 transform -translate-x-1/2 p-3 rounded-lg text-sm min-w-64 text-center ${
-                secondScreenMessage.includes('ау')
+              <div className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 p-3 rounded-lg text-sm min-w-64 text-center ${
+                secondScreenMessage.includes('успешно') 
                   ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
-                  : 'bg-red-500/20 text-red-300'
+                  : 'bg-red-500/20 text-red-300 border border-red-500/30'
               }`}>
                 {secondScreenMessage}
               </div>

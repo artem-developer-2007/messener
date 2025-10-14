@@ -1,25 +1,25 @@
-import { useState, useRef, useEffect } from 'react';
-import picture from '../img/bird.png'
-
-const ChatArea = ({ activeContact, onSendMessage }) => {
+// Компонент области чата (правая панель)
+const ChatArea = () => {
   const [message, setMessage] = useState('');
-  const messagesEndRef = useRef(null);
+  const [isTyping, setIsTyping] = useState(false);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [activeContact?.messages]);
-
+  // Отправка сообщения из текущего чата
   const handleSendMessage = () => {
     if (message.trim() && activeContact) {
-      onSendMessage(activeContact.id, message.trim());
+      handleSendMessage(activeContact.id, message.trim());
       setMessage('');
+      
+      // Останавливаем индикатор печати после отправки
+      if (activeContact.chatId) {
+        sendWebSocketMessage('typing_stop', { 
+          chatId: activeContact.chatId, 
+          contactId: activeContact.id 
+        });
+      }
     }
   };
 
+  // Обработка нажатия Enter в поле ввода сообщения
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -27,25 +27,52 @@ const ChatArea = ({ activeContact, onSendMessage }) => {
     }
   };
 
-    const handleDragStart = (e) => {
-    e.preventDefault();
+  // Обработка изменения текста в поле ввода
+  const handleInputChange = (e) => {
+    setMessage(e.target.value);
+    
+    // Отправляем индикатор печати при наличии текста
+    if (activeContact && activeContact.chatId && e.target.value.trim()) {
+      if (!isTyping) {
+        setIsTyping(true);
+        sendWebSocketMessage('typing_start', { 
+          chatId: activeContact.chatId, 
+          contactId: activeContact.id 
+        });
+        
+        // Автоматически останавливаем индикатор через 3 секунды
+        setTimeout(() => {
+          setIsTyping(false);
+          sendWebSocketMessage('typing_stop', { 
+            chatId: activeContact.chatId, 
+            contactId: activeContact.id 
+          });
+        }, 3000);
+      }
+    } else if (isTyping) {
+      // Останавливаем индикатор если текст удален
+      setIsTyping(false);
+      sendWebSocketMessage('typing_stop', { 
+        chatId: activeContact.chatId, 
+        contactId: activeContact.id 
+      });
+    }
   };
 
-  //
-  const handleContextMenu = (e) => {
-    e.preventDefault();
-  };
-
+  // Состояние когда чат не выбран
   if (!activeContact) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900  to-orange-900">
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 to-orange-900">
         <div className="text-center">
           <div className="w-72 h-72 flex items-center justify-center mx-auto mb-4">
-            <img src={picture}
-            width={300}
-            className='opacity-50'
-            onDragStart={handleDragStart}
-            onContextMenu={handleContextMenu}/>
+            <img 
+              src={picture}
+              width={300}
+              className='opacity-50'
+              onDragStart={handleDragStart}
+              onContextMenu={handleContextMenu}
+              alt="Messenger"
+            />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Выберите чат</h2>
           <p className="text-slate-400">Начните общение, выбрав контакт из списка</p>
@@ -54,9 +81,12 @@ const ChatArea = ({ activeContact, onSendMessage }) => {
     );
   }
 
+  // Проверяем, печатает ли сейчас контакт
+  const isTypingActive = typingUsers[activeContact.chatId];
+
   return (
     <div className="flex-1 flex flex-col bg-gradient-to-br from-slate-800 to-slate-900">
-      {/* Заголовок чата */}
+      {/* Заголовок чата с информацией о контакте */}
       <div className="bg-slate-800 border-b border-slate-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -76,25 +106,15 @@ const ChatArea = ({ activeContact, onSendMessage }) => {
               <h2 className="font-bold text-white">{activeContact.name}</h2>
               <p className="text-sm text-slate-300">
                 {activeContact.online ? 'online' : `был(а) ${activeContact.lastSeen}`}
+                {isTypingActive && ' • печатает...'}
               </p>
             </div>
-          </div>
-          <div className="flex space-x-2">
-            <button className="p-2 rounded-full hover:bg-slate-700 transition-colors">
-              <i className="fas fa-phone text-slate-300"></i>
-            </button>
-            <button className="p-2 rounded-full hover:bg-slate-700 transition-colors">
-              <i className="fas fa-video text-slate-300"></i>
-            </button>
-            <button className="p-2 rounded-full hover:bg-slate-700 transition-colors">
-              <i className="fas fa-ellipsis-v text-slate-300"></i>
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Область сообщений */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+      {/* Область отображения сообщений */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {activeContact.messages.map((msg) => (
           <div
             key={msg.id}
@@ -113,28 +133,25 @@ const ChatArea = ({ activeContact, onSendMessage }) => {
               <div className={`text-xs mt-1 ${msg.sender === 'user' ? 'text-blue-200' : 'text-slate-400'} text-right`}>
                 {msg.time}
                 {msg.sender === 'user' && (
-                  <i className={`ml-1 fas fa-${msg.read ? 'check-double text-blue-300' : 'check'}`}></i>
+                  <span className={`ml-1 ${msg.read ? 'text-blue-300' : 'text-blue-200'}`}>
+                    {msg.read ? '✓✓' : '✓'}
+                  </span>
                 )}
               </div>
             </div>
           </div>
         ))}
+        {/* Референс для автоматической прокрутки */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Поле ввода сообщения */}
+      {/* Поле ввода нового сообщения */}
       <div className="bg-slate-800 border-t border-slate-700 p-4">
         <div className="flex items-center space-x-2">
-          <button className="p-2 rounded-full hover:bg-slate-700 transition-colors">
-            <i className="fas fa-plus text-slate-300"></i>
-          </button>
-          <button className="p-2 rounded-full hover:bg-slate-700 transition-colors">
-            <i className="fas fa-paperclip text-slate-300"></i>
-          </button>
           <div className="flex-1 relative">
             <textarea
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder="Введите сообщение..."
               className="w-full bg-slate-700 text-white rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -147,12 +164,12 @@ const ChatArea = ({ activeContact, onSendMessage }) => {
             disabled={!message.trim()}
             className="p-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <i className="fas fa-paper-plane text-white"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
           </button>
         </div>
       </div>
     </div>
   );
 };
-
-export default ChatArea;

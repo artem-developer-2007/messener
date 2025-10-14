@@ -416,9 +416,9 @@ router.get('/user-info/:userId', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== СЛУЖЕБНЫЕ ЭНДПОИНТЫ ====================
+//
 
-// 🗄️ ИНИЦИАЛИЗАЦИЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ
+// ИНИЦИАЛИЗАЦИЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ
 router.get('/init-db', async (req, res) => {
   try {
     const isConnected = await testConnection();
@@ -432,7 +432,7 @@ router.get('/init-db', async (req, res) => {
   }
 });
 
-// 🧹 РУЧНАЯ ОЧИСТКА УСТАРЕВШИХ КОДОВ (для администрирования)e
+//  ОЧИСТКА УСТАРЕВШИХ КОДОВ
 router.post('/cleanup-codes', authenticateToken, async (req, res) => {
   try {
     const cleanedCount = await cleanupExpiredCodes();
@@ -449,6 +449,25 @@ router.post('/cleanup-codes', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== ЭКСПОРТ РОУТЕРА ====================
+// Добавление контактов
+router.post('/add-contact', authenticateToken, async (req, res) => {
+  try {
+    const { contactId } = req.body;
+    const userId = req.user.userId;
+
+    const result = await addContact(userId, contactId);
+    
+    if (result.success) {
+      res.json({ success: true, message: 'Контакт добавлен' });
+    } else {
+      res.status(400).json({ success: false, message: 'Ошибка добавления контакта' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Ошибка сервера' });
+  }
+});
+
+
+// ЭКСПОРТ РОУТЕРА
 
 module.exports = router;
