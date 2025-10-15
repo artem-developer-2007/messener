@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import picture from './img/bird.png';
+import ChatArea from './components/ChatArea';
 
 const Messenger = () => {
   // ==================== СОСТОЯНИЯ КОМПОНЕНТА ====================
@@ -40,8 +40,6 @@ const Messenger = () => {
       return;
     }
 
-
-    
     // Создаем новое WebSocket соединение с токеном авторизации
     const ws = new WebSocket(`ws://localhost:5000?token=${token}`);
     
@@ -430,65 +428,77 @@ const Messenger = () => {
   // ==================== УПРАВЛЕНИЕ СООБЩЕНИЯМИ ====================
 
   // Отправка нового сообщения
-// Отправка нового сообщения
-const handleSendMessage = async (contactId, messageText) => {
-  if (!messageText.trim()) return;
+  const handleSendMessage = async (contactId, messageText) => {
+    if (!messageText.trim()) return;
 
-  try {
-    // Получаем или создаем чат
-    const token = localStorage.getItem('token');
-    const response = await axios.post('http://localhost:5000/api/chats/get-or-create', {
-      contactId: contactId
-    }, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    try {
+      // Получаем или создаем чат
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://localhost:5000/api/chats/get-or-create', {
+        contactId: contactId
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-    const chatId = response.data.chatId;
+      const chatId = response.data.chatId;
 
-    // Отправляем сообщение через WebSocket для реального времени
-    sendWebSocketMessage('send_message', {
-      chatId: chatId,
-      contactId: contactId,
-      messageText: messageText.trim()
-    });
+      console.log('🔍 Проверка перед отправкой:', {
+        socketExists: !!socket,
+        socketState: socket?.readyState,
+        contactId,
+        messageText
+      });
 
-    // Локально добавляем сообщение для мгновенного отображения (optimistic update)
-    const newMessage = {
-      id: Date.now(),
-      text: messageText.trim(),
-      sender: 'user',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      read: false,
-      chatId: chatId
-    };
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        console.error('❌ WebSocket не доступен!');
+        alert('WebSocket соединение потеряно. Перезагрузите страницу.');
+        return;
+      }
 
-    // Обновляем список контактов
-    setContacts(prevContacts =>
-      prevContacts.map(contact =>
-        contact.id === contactId
-          ? {
-              ...contact,
-              messages: [...contact.messages, newMessage],
-              lastMessage: messageText.trim(),
-              lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              chatId: chatId
-            }
-          : contact
-      )
-    );
+      // Отправляем сообщение через WebSocket для реального времени
+      sendWebSocketMessage('send_message', {
+        chatId: chatId,
+        contactId: contactId,
+        messageText: messageText.trim()
+      });
 
-    // Обновляем активный контакт
-    if (activeContact && activeContact.id === contactId) {
-      setActiveContact(prev => ({
-        ...prev,
-        messages: [...prev.messages, newMessage],
+      // Локально добавляем сообщение для мгновенного отображения (optimistic update)
+      const newMessage = {
+        id: Date.now(),
+        text: messageText.trim(),
+        sender: 'user',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false,
         chatId: chatId
-      }));
+      };
+
+      // Обновляем список контактов
+      setContacts(prevContacts =>
+        prevContacts.map(contact =>
+          contact.id === contactId
+            ? {
+                ...contact,
+                messages: [...contact.messages, newMessage],
+                lastMessage: messageText.trim(),
+                lastMessageTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                chatId: chatId
+              }
+            : contact
+        )
+      );
+
+      // Обновляем активный контакт
+      if (activeContact && activeContact.id === contactId) {
+        setActiveContact(prev => ({
+          ...prev,
+          messages: [...prev.messages, newMessage],
+          chatId: chatId
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при отправке сообщения:', error);
     }
-  } catch (error) {
-    console.error('❌ Ошибка при отправке сообщения:', error);
-  }
-};
+  };
 
   // Отметка сообщений как прочитанных
   const markMessagesAsRead = (chatId) => {
@@ -555,7 +565,7 @@ const handleSendMessage = async (contactId, messageText) => {
           <div className="relative flex-1">
             <input 
               type="text" 
-              placeholder="Введите ID или email..." 
+              placeholder="Введите id или email" 
               className="w-full bg-slate-800 text-white rounded-lg pl-3 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -684,214 +694,20 @@ const handleSendMessage = async (contactId, messageText) => {
     </div>
   );
 
-  // Компонент области чата (правая панель)
-  const ChatArea = () => {
-    const [message, setMessage] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-
-    // Отправка сообщения из текущего чата
-    const handleSendMessage = () => {
-      if (message.trim() && activeContact) {
-        handleSendMessage(activeContact.id, message.trim());
-        setMessage('');
-        
-        // Останавливаем индикатор печати после отправки
-        if (activeContact.chatId) {
-          sendWebSocketMessage('typing_stop', { 
-            chatId: activeContact.chatId, 
-            contactId: activeContact.id 
-          });
-        }
-      }
-    };
-
-    // Обработка нажатия Enter в поле ввода сообщения
-    const handleKeyPress = (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSendMessage();
-      }
-    };
-
-    // Обработка изменения текста в поле ввода
-    const handleInputChange = (e) => {
-      setMessage(e.target.value);
-      
-      // Отправляем индикатор печати при наличии текста
-      if (activeContact && activeContact.chatId && e.target.value.trim()) {
-        if (!isTyping) {
-          setIsTyping(true);
-          sendWebSocketMessage('typing_start', { 
-            chatId: activeContact.chatId, 
-            contactId: activeContact.id 
-          });
-          
-          // Автоматически останавливаем индикатор через 3 секунды
-          setTimeout(() => {
-            setIsTyping(false);
-            sendWebSocketMessage('typing_stop', { 
-              chatId: activeContact.chatId, 
-              contactId: activeContact.id 
-            });
-          }, 3000);
-        }
-      } else if (isTyping) {
-        // Останавливаем индикатор если текст удален
-        setIsTyping(false);
-        sendWebSocketMessage('typing_stop', { 
-          chatId: activeContact.chatId, 
-          contactId: activeContact.id 
-        });
-      }
-    };
-
-    // Состояние когда чат не выбран
-    if (!activeContact) {
-      return (
-        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 to-orange-900">
-          <div className="text-center">
-            <div className="w-72 h-72 flex items-center justify-center mx-auto mb-4">
-              <img 
-                src={picture}
-                width={300}
-                className='opacity-50'
-                onDragStart={handleDragStart}
-                onContextMenu={handleContextMenu}
-                alt="Messenger"
-              />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Выберите чат</h2>
-            <p className="text-slate-400">Начните общение, выбрав контакт из списка</p>
-          </div>
-        </div>
-      );
-    }
-
-    // Проверяем, печатает ли сейчас контакт
-    const isTypingActive = typingUsers[activeContact.chatId];
-
-    // Проверка WebSocket соединения
-
-{/* Поле ввода нового сообщения */}
-<div className="bg-slate-800 border-t border-slate-700 p-4">
-  <div className="flex items-center space-x-2">
-    <div className="flex-1 relative">
-      <textarea
-        value={message}
-        onChange={handleInputChange}
-        onKeyPress={handleKeyPress}
-        placeholder="Введите сообщение..."
-        className="w-full bg-slate-700 text-white rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-        rows="1"
-        style={{ minHeight: '44px', maxHeight: '120px' }}
-      />
-    </div>
-    <button
-      onClick={handleSendMessage}
-      disabled={!message.trim()}
-      className="p-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-      </svg>
-    </button>
-  </div>
-</div>
-
-    return (
-      <div className="flex-1 flex flex-col bg-gradient-to-br from-slate-800 to-slate-900">
-        {/* Заголовок чата с информацией о контакте */}
-        <div className="bg-slate-800 border-b border-slate-700 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold">
-                  {activeContact.avatar ? (
-                    <img src={activeContact.avatar} alt={activeContact.name} className="w-10 h-10 rounded-full" />
-                  ) : (
-                    activeContact.name.charAt(0)
-                  )}
-                </div>
-                {activeContact.online && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-slate-800"></div>
-                )}
-              </div>
-              <div>
-                <h2 className="font-bold text-white">{activeContact.name}</h2>
-                <p className="text-sm text-slate-300">
-                  {activeContact.online ? 'online' : `был(а) ${activeContact.lastSeen}`}
-                  {isTypingActive && ' • печатает...'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Область отображения сообщений */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {activeContact.messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex fade-in ${
-                msg.sender === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              <div
-                className={`max-w-xs lg:max-w-md rounded-2xl px-4 py-2 ${
-                  msg.sender === 'user'
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-none'
-                    : 'bg-slate-700 text-white rounded-bl-none'
-                }`}
-              >
-                <p className="text-sm">{msg.text}</p>
-                <div className={`text-xs mt-1 ${msg.sender === 'user' ? 'text-blue-200' : 'text-slate-400'} text-right`}>
-                  {msg.time}
-                  {msg.sender === 'user' && (
-                    <span className={`ml-1 ${msg.read ? 'text-blue-300' : 'text-blue-200'}`}>
-                      {msg.read ? '✓✓' : '✓'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-          {/* Референс для автоматической прокрутки */}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Поле ввода нового сообщения */}
-        <div className="bg-slate-800 border-t border-slate-700 p-4">
-          <div className="flex items-center space-x-2">
-            <div className="flex-1 relative">
-              <textarea
-                value={message}
-                onChange={handleInputChange}
-                onKeyPress={handleKeyPress}
-                placeholder="Введите сообщение..."
-                className="w-full bg-slate-700 text-white rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                rows="1"
-                style={{ minHeight: '44px', maxHeight: '120px' }}
-              />
-            </div>
-            <button
-              onClick={handleSendMessage}
-              disabled={!message.trim()}
-              className="p-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-           
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   // ==================== ОСНОВНОЙ РЕНДЕР КОМПОНЕНТА ====================
 
   return (
     <div className="flex h-screen bg-slate-900">
       <ContactsList />
-      <ChatArea />
+      <ChatArea 
+        activeContact={activeContact}
+        onSendMessage={handleSendMessage}
+        typingUsers={typingUsers}
+        sendWebSocketMessage={sendWebSocketMessage}
+        messagesEndRef={messagesEndRef}
+        onDragStart={handleDragStart}
+        onContextMenu={handleContextMenu}
+      />
     </div>
   );
 };

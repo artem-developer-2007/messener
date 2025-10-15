@@ -1,12 +1,22 @@
-// Компонент области чата (правая панель)
-const ChatArea = () => {
+import { useState } from 'react';
+import picture from '../img/bird.png';
+
+const ChatArea = ({ 
+  activeContact, 
+  onSendMessage, 
+  typingUsers, 
+  sendWebSocketMessage,
+  messagesEndRef,
+  onDragStart,
+  onContextMenu 
+}) => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
   // Отправка сообщения из текущего чата
   const handleSendMessage = () => {
     if (message.trim() && activeContact) {
-      handleSendMessage(activeContact.id, message.trim());
+      onSendMessage(activeContact.id, message.trim());
       setMessage('');
       
       // Останавливаем индикатор печати после отправки
@@ -69,8 +79,8 @@ const ChatArea = () => {
               src={picture}
               width={300}
               className='opacity-50'
-              onDragStart={handleDragStart}
-              onContextMenu={handleContextMenu}
+              onDragStart={onDragStart}
+              onContextMenu={onContextMenu}
               alt="Messenger"
             />
           </div>
@@ -93,7 +103,13 @@ const ChatArea = () => {
             <div className="relative">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold">
                 {activeContact.avatar ? (
-                  <img src={activeContact.avatar} alt={activeContact.name} className="w-10 h-10 rounded-full" />
+                  <img 
+                    src={activeContact.avatar} 
+                    alt={activeContact.name} 
+                    className="w-10 h-10 rounded-full"
+                    onDragStart={onDragStart}
+                    onContextMenu={onContextMenu}
+                  />
                 ) : (
                   activeContact.name.charAt(0)
                 )}
@@ -173,3 +189,5 @@ const ChatArea = () => {
     </div>
   );
 };
+
+export default ChatArea;

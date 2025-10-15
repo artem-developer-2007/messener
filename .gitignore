@@ -26,3 +26,5 @@ dist-ssr
 CLIENT.txt
 SERVER.txt
 ЧТО НАДО СДЕЛАТЬ.txt
+
+node_modules

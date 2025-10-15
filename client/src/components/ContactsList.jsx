@@ -102,7 +102,7 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
           <div className="relative flex-1">
             <input 
               type="text" 
-              placeholder="Введите ID или email..." 
+              placeholder="Введите ID или email" 
               className="w-full bg-slate-800 text-white rounded-lg pl-3 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
