@@ -566,7 +566,7 @@ const Messenger = () => {
             <input 
               type="text" 
               placeholder="Введите id или email" 
-              className="w-full bg-slate-800 text-white rounded-lg pl-3 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full bg-slate-800 text-white rounded-sm pl-3 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -576,7 +576,7 @@ const Messenger = () => {
           <button
             onClick={handleSearchUsers}
             disabled={isSearching || !searchTerm.trim()}
-            className="bg-gradient-to-r from-orange-600 to-orange-700 disabled:opacity-50 text-white rounded-lg px-3 py-2 transition-colors text-sm"
+            className="bg-gradient-to-r from-blue-400 to-blue-600 disabled:opacity-50 text-white rounded-sm px-3 py-2 transition-colors text-sm hover:cursor-pointer"
           >
             {isSearching ? '...' : 'Найти'}
           </button>
@@ -660,7 +660,7 @@ const Messenger = () => {
               <div 
                 key={contact.id} 
                 className={`flex items-center p-3 border-b border-slate-800 cursor-pointer hover:bg-slate-800 transition-all ${
-                  activeContact?.id === contact.id ? 'bg-slate-800 border-l-4 border-l-blue-500' : ''
+                  activeContact?.id === contact.id ? 'bg-slate-800' : ''
                 }`}
                 onClick={() => setActiveContact(contact)}
               >

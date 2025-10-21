@@ -62,7 +62,7 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
       id: user.id,
       name: user.displayName || `User${user.id}`,
       email: user.email,
-      avatar: user.avatar || `https://ui-avatars.com/api/?name=${user.id}&background=4294ff&color=ffffff&bold=true`,
+      avatar: user.avatar,
       online: false,
       lastSeen: 'не в сети',
       messages: []

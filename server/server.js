@@ -5,8 +5,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
-const path = require('path');
-const fs = require('fs');
+// const path = require('path');
+// const fs = require('fs');
 
 // Импорт всех функций из database.js
 const { 
@@ -495,7 +495,7 @@ app.get('/api/auth/verify-token', authenticateToken, (req, res) => {
   });
 });
 
-// 👤 ПОЛУЧЕНИЕ ИНФОРМАЦИИ О ТЕКУЩЕМ ПОЛЬЗОВАТЕЛЕ
+// ПОЛУЧЕНИЕ ИНФОРМАЦИИ О ТЕКУЩЕМ ПОЛЬЗОВАТЕЛЕ
 app.get('/api/auth/user/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -680,7 +680,7 @@ app.post('/api/contacts/add', authenticateToken, async (req, res) => {
           id: contactUser.id,
           email: contactUser.email,
           displayName: `User${contactUser.id}`,
-          avatar: `https://ui-avatars.com/api/?name=${contactUser.id}&background=4294ff&color=ffffff&bold=true`
+          avatar: `https://ui-avatars.com/api/?name=${contactUser.id}&background=ffa500&color=ffffff&bold=true`
         }
       });
     } else {

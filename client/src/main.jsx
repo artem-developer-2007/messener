@@ -5,7 +5,7 @@ import Auth from './Auth.jsx';
 import Messenger from './Messenger.jsx';
 
 // Компонент для защиты маршрутов
-const ProtectedRoute = ({ children }) => {
+const ProtectedRouteMess = ({ children }) => {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/login" replace />;
 };
@@ -19,9 +19,9 @@ createRoot(document.getElementById('root')).render(
         <Route 
           path='/messenger'
           element={
-            <ProtectedRoute>
+            <ProtectedRouteMess>
               <Messenger />
-            </ProtectedRoute>
+            </ProtectedRouteMess>
           } 
         />
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -122,7 +122,7 @@ const ChatArea = ({
               <h2 className="font-bold text-white">{activeContact.name}</h2>
               <p className="text-sm text-slate-300">
                 {activeContact.online ? 'online' : `был(а) ${activeContact.lastSeen}`}
-                {isTypingActive && ' • печатает...'}
+                {isTypingActive && 'печатает...'}
               </p>
             </div>
           </div>
@@ -169,8 +169,8 @@ const ChatArea = ({
               value={message}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Введите сообщение..."
-              className="w-full bg-slate-700 text-white rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Message"
+              className="w-full bg-slate-700 text-white rounded-sm pl-4 pr-12 py-3 focus:outline-none resize-none"
               rows="1"
               style={{ minHeight: '44px', maxHeight: '120px' }}
             />
@@ -178,11 +178,9 @@ const ChatArea = ({
           <button
             onClick={handleSendMessage}
             disabled={!message.trim()}
-            className="p-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="text-white py-3 px-2 rounded-sm bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            Отправить
           </button>
         </div>
       </div>

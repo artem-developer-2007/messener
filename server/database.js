@@ -10,7 +10,7 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
 });
 
-// Функции аутентификации
+// Функции БД
 
 // F1 для проверки подключения
 const testConnection = async () => {
@@ -59,13 +59,15 @@ const upsertUserWithCode = async (email, verificationCode, codeExpiresAt) => {
 const verifyCode = async (email, code) => {
   try {
     // КОД СУЩЕСТВУЕТ И НЕ ИСТЕК
-    const checkQuery = `
+    const query = `
       SELECT id, email, verification_code, code_expires_at, login_attempts, is_verified
       FROM users 
       WHERE email = $1 AND verification_code = $2 AND code_expires_at > NOW()
     `;
+
+    const values = [email, code]
     
-    const checkResult = await pool.query(checkQuery, [email, code]);
+    const checkResult = await pool.query(query, values);
     
     if (checkResult.rows.length === 0) {
       // ИНКРЕМЕНТ ПОПЫТОК
@@ -135,18 +137,17 @@ const getUserById = async (userId) => {
 };
 
 // F6 для поиска пользователей по ID или email
+// F6 для поиска пользователей по ID или email - ТОЧНЫЕ СОВПАДЕНИЯ
 const searchUsers = async (searchTerm) => {
   try {
     const query = `
       SELECT id, email, is_verified, last_login, created_at 
-      FROM users 
-      WHERE id::text = $1 OR email ILIKE $2
+      FROM users
+      WHERE id::text = $1 OR email = $1
       LIMIT 10
     `;
     
-    const searchPattern = `%${searchTerm}%`;
-    const result = await pool.query(query, [searchTerm, searchPattern]);
-    
+    const result = await pool.query(query, [searchTerm]);
     return result.rows;
   } catch (error) {
     console.error('❌ Ошибка при поиске пользователей:', error);
@@ -184,6 +185,45 @@ const addContact = async (userId, contactId) => {
     return { success: true, contact: result.rows[0] };
   } catch (error) {
     console.error('❌ Ошибка при добавлении контакта:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// F9 Удаление контакта из друзей для себя
+const deleteContact = async (userId, contactId) => {
+  try {
+    const query = `
+      DELETE FROM user_contacts
+      WHERE (user_id = $1 AND contact_id = $2)
+         OR (user_id = $2 AND contact_id = $1)
+    `;
+    
+    const result = await pool.query(query, [userId, contactId]);
+    return { 
+      success: true, 
+      deletedCount: result.rowCount,
+      message: `Удалено ${result.rowCount} связей контакта` 
+    };
+  } catch (error) {
+    console.error('❌ Ошибка при удалении контакта:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// F9 Удаление контакта из друзей для обоих
+const deleteContactTwo = async (userId, contactId) => {
+  try {
+    const query = `
+      INSERT INTO user_contacts (user_id, contact_id) 
+      VALUES ($1, $2), ($2, $1)
+      ON CONFLICT (user_id, contact_id) DO NOTHING
+      RETURNING id
+    `;
+    
+    const result = await pool.query(query, [userId, contactId]);
+    return { success: true, contact: result.rows[0] };
+  } catch (error) {
+    console.error('❌ Ошибка при удалении контакта:', error);
     return { success: false, error: error.message };
   }
 };
