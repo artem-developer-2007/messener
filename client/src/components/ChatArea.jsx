@@ -141,7 +141,7 @@ const ChatArea = ({
             <div
               className={`max-w-xs lg:max-w-md rounded-2xl px-4 py-2 ${
                 msg.sender === 'user'
-                  ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-br-none'
+                  ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-br-none' //
                   : 'bg-slate-700 text-white rounded-bl-none'
               }`}
             >
