@@ -553,11 +553,6 @@ const Messenger = () => {
       <div className="p-4 border-b border-slate-700">
         <div className="flex items-center gap-2 mb-3">
           <h1 className="text-white font-bold text-lg flex-1">Контакты</h1>
-          {userInfo && (
-            <div className="text-sm text-slate-400">
-              ID: {userInfo.id}
-            </div>
-          )}
         </div>
         
         {/* Поле поиска и кнопка */}
