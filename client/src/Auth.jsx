@@ -28,9 +28,12 @@ function Auth() {
   const [code5, setCode5] = useState('');
   const [code6, setCode6] = useState('');
 
+<<<<<<< HEAD
   // WebSocket соединение
   const [socket, setSocket] = useState(null);
 
+=======
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
   // ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ВСТАВКИ ИЗ БУФЕРА ОБМЕНА
   const handlePaste = (e) => {
     e.preventDefault();
@@ -58,6 +61,7 @@ function Auth() {
     }
   };
 
+<<<<<<< HEAD
   // ИНИЦИАЛИЗАЦИЯ WEB SOCKET ПРИ УСПЕШНОЙ АУТЕНТИФИКАЦИИ
   const initializeWebSocket = (token) => {
     const ws = new WebSocket(`ws://localhost:5000?token=${token}`);
@@ -133,6 +137,8 @@ function Auth() {
     }
   };
 
+=======
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
   // ЕСЛИ ПЕРВЫЙ ЭКРАН ИСТИННЫЙ - ПЕРЕКЛЮЧИТЬ НА ВТОРОЙ, ЕСЛИ ЛОЖНЫЙ - НА ПЕРВЫЙ
   const toggleScreen = () => {
     setCurrentScreen(currentScreen === 'first' ? 'second' : 'first');
@@ -204,6 +210,7 @@ function Auth() {
       });
 
       if (response.data.success) {
+<<<<<<< HEAD
         const { token, userId } = response.data;
         
         // Сохраняем данные в localStorage
@@ -216,6 +223,10 @@ function Auth() {
         
         // Синхронизируем контакты с БД
         await syncContactsToDB(userId, token);
+=======
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('userEmail', storedEmail);
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
         
         setSecondScreenMessage('Успешная аутентификация!');
         
@@ -296,6 +307,7 @@ function Auth() {
     }
   }, [currentScreen]);
 
+<<<<<<< HEAD
   // ЗАКРЫТИЕ WEB SOCKET ПРИ РАЗМОНТИРОВАНИИ КОМПОНЕНТА
   useEffect(() => {
     return () => {
@@ -306,6 +318,8 @@ function Auth() {
     };
   }, [socket]);
 
+=======
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
   return (
     <>
       {/* ОБЩИЙ КОНТЕЙНЕР */}
@@ -399,7 +413,11 @@ function Auth() {
             : 'translate-x-full'
         }`}>
           
+<<<<<<< HEAD
           <div className="h-full bg-gradient-to-br from-slate-900 to-orange-900 flex flex-col items-center justify-center pb-15 relative">
+=======
+          <div className="h-full bg-gradient-to-br from-slate-900 to-orange-900 flex flex-col items-center justify-center pb-15">
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
             
             {/* Кнопка назад */}
             <button 
@@ -441,7 +459,11 @@ function Auth() {
                     ref,
                     index > 0 ? [null, inputRef1, inputRef2, inputRef3, inputRef4, inputRef5][index] : null
                   )}
+<<<<<<< HEAD
                   onPaste={handlePaste}
+=======
+                  onPaste={handlePaste} // Добавляем обработчик вставки
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
                   onKeyPress={handleKeyPress}
                   className="w-16 h-16 border text-white border-orange-400 rounded-lg text-center text-2xl 
                            bg-none focus:outline-none focus:border-amber-700 transition-colors"
@@ -459,12 +481,20 @@ function Auth() {
               {isLoading ? 'ПРОВЕРКА...' : 'ПОДТВЕРДИТЬ'}
             </button>
 
+<<<<<<< HEAD
             {/* Сообщение с абсолютным позиционированием - не смещает контент */}
             {secondScreenMessage && (
               <div className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 p-3 rounded-lg text-sm min-w-64 text-center ${
                 secondScreenMessage.includes('успешно') 
                   ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
                   : 'bg-red-500/20 text-red-300 border border-red-500/30'
+=======
+            {secondScreenMessage && (
+              <div className={`absolute bottom-82  left-1/2 transform -translate-x-1/2 p-3 rounded-lg text-sm min-w-64 text-center ${
+                secondScreenMessage.includes('ау')
+                  ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                  : 'bg-red-500/20 text-red-300'
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
               }`}>
                 {secondScreenMessage}
               </div>

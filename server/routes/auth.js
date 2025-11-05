@@ -416,9 +416,15 @@ router.get('/user-info/:userId', authenticateToken, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 //
 
 // ИНИЦИАЛИЗАЦИЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ
+=======
+// ==================== СЛУЖЕБНЫЕ ЭНДПОИНТЫ ====================
+
+// 🗄️ ИНИЦИАЛИЗАЦИЯ ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
 router.get('/init-db', async (req, res) => {
   try {
     const isConnected = await testConnection();
@@ -432,7 +438,11 @@ router.get('/init-db', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 //  ОЧИСТКА УСТАРЕВШИХ КОДОВ
+=======
+// 🧹 РУЧНАЯ ОЧИСТКА УСТАРЕВШИХ КОДОВ (для администрирования)e
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
 router.post('/cleanup-codes', authenticateToken, async (req, res) => {
   try {
     const cleanedCount = await cleanupExpiredCodes();
@@ -449,6 +459,7 @@ router.post('/cleanup-codes', authenticateToken, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // Добавление контактов
 router.post('/add-contact', authenticateToken, async (req, res) => {
   try {
@@ -469,5 +480,8 @@ router.post('/add-contact', authenticateToken, async (req, res) => {
 
 
 // ЭКСПОРТ РОУТЕРА
+=======
+// ==================== ЭКСПОРТ РОУТЕРА ====================
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
 
 module.exports = router;

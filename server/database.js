@@ -1,18 +1,30 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+<<<<<<< HEAD
 // Пул для соединения с Potgres
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'messenger_db',
+=======
+// Создаем пул соединений с PostgreSQL
+const pool = new Pool({
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'your_database_name',
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
   password: process.env.DB_PASSWORD || 'your_password',
   port: process.env.DB_PORT || 5432,
 });
 
+<<<<<<< HEAD
 // Функции БД
 
 // F1 для проверки подключения
+=======
+// Функция для проверки подключения
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
 const testConnection = async () => {
   try {
     const client = await pool.connect();
@@ -20,16 +32,28 @@ const testConnection = async () => {
     client.release();
     return true;
   } catch (error) {
+<<<<<<< HEAD
     console.error('Ошибка подключения к PostgreSQL:', error.message);
+=======
+    console.error('❌ Ошибка подключения к PostgreSQL:', error.message);
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
     return false;
   }
 };
 
+<<<<<<< HEAD
 // F2 для создания/обновления пользователя и кода
 const upsertUserWithCode = async (email, verificationCode, codeExpiresAt) => {
   try {
     const query = `
       INSERT INTO users (email, verification_code, code_expires_at, is_verified, login_attempts)
+=======
+// Функция для создания/обновления пользователя и кода
+const upsertUserWithCode = async (email, verificationCode, codeExpiresAt) => {
+  try {
+    const query = `
+      INSERT INTO email (email, verification_code, code_expires_at, is_verified, login_attempts)
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
       VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (email) 
       DO UPDATE SET 
@@ -38,8 +62,13 @@ const upsertUserWithCode = async (email, verificationCode, codeExpiresAt) => {
         is_verified = EXCLUDED.is_verified,
         login_attempts = EXCLUDED.login_attempts,
         created_at = CASE 
+<<<<<<< HEAD
           WHEN users.id IS NULL THEN NOW() 
           ELSE users.created_at 
+=======
+          WHEN email.id IS NULL THEN NOW() 
+          ELSE email.created_at 
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
         END
       RETURNING id, email, verification_code, code_expires_at, is_verified;
     `;
@@ -55,6 +84,7 @@ const upsertUserWithCode = async (email, verificationCode, codeExpiresAt) => {
   }
 };
 
+<<<<<<< HEAD
 // F3 для проверки кода
 const verifyCode = async (email, code) => {
   try {
@@ -73,6 +103,24 @@ const verifyCode = async (email, code) => {
       // ИНКРЕМЕНТ ПОПЫТОК
       await pool.query(
         'UPDATE users SET login_attempts = login_attempts + 1 WHERE email = $1',
+=======
+// Функция для проверки кода
+const verifyCode = async (email, code) => {
+  try {
+    // Сначала проверяем существует ли код и не истек ли срок
+    const checkQuery = `
+      SELECT id, email, verification_code, code_expires_at, login_attempts, is_verified
+      FROM email 
+      WHERE email = $1 AND verification_code = $2 AND code_expires_at > NOW()
+    `;
+    
+    const checkResult = await pool.query(checkQuery, [email, code]);
+    
+    if (checkResult.rows.length === 0) {
+      // Увеличиваем счетчик попыток если пользователь существует
+      await pool.query(
+        'UPDATE email SET login_attempts = login_attempts + 1 WHERE email = $1',
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
         [email]
       );
       return { success: false, message: 'Неверный код или код истек' };
@@ -80,14 +128,22 @@ const verifyCode = async (email, code) => {
     
     const user = checkResult.rows[0];
     
+<<<<<<< HEAD
     // ПРОВЕРКА КОЛИЧЕСТВА ПОПЫТОК
+=======
+    // Проверяем количество попыток
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
     if (user.login_attempts >= 5) {
       return { success: false, message: 'Слишком много неудачных попыток. Запросите новый код.' };
     }
     
     // Если код верный - обновляем статус пользователя
     const updateQuery = `
+<<<<<<< HEAD
       UPDATE users 
+=======
+      UPDATE email 
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
       SET is_verified = true, login_attempts = 0, last_login = NOW()
       WHERE email = $1
       RETURNING id, email, is_verified, last_login
@@ -107,12 +163,20 @@ const verifyCode = async (email, code) => {
   }
 };
 
+<<<<<<< HEAD
 // ПОЛЬЗОВАТЕЛЯ МОЖНО БДЕТ НАЙТИ ПО ID И ПО EMAIL
 // F4 для получения пользователя по email
 const getUserByEmail = async (email) => {
   try {
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
+=======
+// Функция для получения пользователя по email
+const getUserByEmail = async (email) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM email WHERE email = $1',
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
       [email]
     );
     return result.rows[0] || null;
@@ -122,11 +186,19 @@ const getUserByEmail = async (email) => {
   }
 };
 
+<<<<<<< HEAD
 // F5 для получения пользователя по ID
 const getUserById = async (userId) => {
   try {
     const result = await pool.query(
       'SELECT id, email, is_verified, last_login, created_at FROM users WHERE id = $1',
+=======
+// Функция для получения пользователя по ID
+const getUserById = async (userId) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, is_verified, last_login, created_at FROM email WHERE id = $1',
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
       [userId]
     );
     return result.rows[0] || null;
@@ -136,6 +208,7 @@ const getUserById = async (userId) => {
   }
 };
 
+<<<<<<< HEAD
 // F6 для поиска пользователей по ID или email
 // F6 для поиска пользователей по ID или email - ТОЧНЫЕ СОВПАДЕНИЯ
 const searchUsers = async (searchTerm) => {
@@ -148,6 +221,22 @@ const searchUsers = async (searchTerm) => {
     `;
     
     const result = await pool.query(query, [searchTerm]);
+=======
+// Функция для поиска пользователей по ID или email
+const searchUsers = async (searchTerm) => {
+  try {
+    // Ищем пользователей по ID (если searchTerm - число) или по email
+    const query = `
+      SELECT id, email, is_verified, last_login, created_at 
+      FROM email 
+      WHERE id::text = $1 OR email ILIKE $2
+      LIMIT 10
+    `;
+    
+    const searchPattern = `%${searchTerm}%`;
+    const result = await pool.query(query, [searchTerm, searchPattern]);
+    
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
     return result.rows;
   } catch (error) {
     console.error('❌ Ошибка при поиске пользователей:', error);
@@ -155,11 +244,19 @@ const searchUsers = async (searchTerm) => {
   }
 };
 
+<<<<<<< HEAD
 // F7 для очистки устаревших кодов
 const cleanupExpiredCodes = async () => {
   try {
     const result = await pool.query(
       'UPDATE users SET verification_code = NULL, code_expires_at = NULL WHERE code_expires_at < NOW()'
+=======
+// Функция для очистки устаревших кодов
+const cleanupExpiredCodes = async () => {
+  try {
+    const result = await pool.query(
+      'UPDATE email SET verification_code = NULL, code_expires_at = NULL WHERE code_expires_at < NOW()'
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
     );
     console.log(`🧹 Очищено ${result.rowCount} устаревших кодов`);
     return result.rowCount;
@@ -169,6 +266,7 @@ const cleanupExpiredCodes = async () => {
   }
 };
 
+<<<<<<< HEAD
 // ==================== ФУНКЦИИ ДЛЯ ЧАТОВ И СООБЩЕНИЙ ====================
 
 // F8 Добавление контакта
@@ -462,12 +560,17 @@ module.exports = {
   pool,
   
   // Функции аутентификации
+=======
+module.exports = {
+  pool,
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
   testConnection,
   upsertUserWithCode,
   verifyCode,
   getUserByEmail,
   getUserById,
   searchUsers,
+<<<<<<< HEAD
   cleanupExpiredCodes,
   
   // Функции чатов и сообщений
@@ -481,4 +584,7 @@ module.exports = {
   getChatParticipants,
   areUsersContacts,
   getUnreadMessagesCount
+=======
+  cleanupExpiredCodes
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
 };

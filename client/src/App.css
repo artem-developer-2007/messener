@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+<<<<<<< HEAD
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE и Edge */
   scrollbar-width: none;  /* Firefox */
@@ -9,6 +10,8 @@
   display: none;  /* Chrome, Safari и Opera */
 }
 
+=======
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
 }

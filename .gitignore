@@ -25,6 +25,10 @@ dist-ssr
 
 CLIENT.txt
 SERVER.txt
+<<<<<<< HEAD
 ЧТО НАДО СДЕЛАТЬ.txt
 
 node_modules
+=======
+ЧТО НАДО СДЕЛАТЬ.txt
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751

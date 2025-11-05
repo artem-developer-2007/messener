@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react-swc'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
+<<<<<<< HEAD
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
@@ -12,11 +13,18 @@ export default defineConfig(({ mode }) => ({
   // ✅ ВАЖНО: Базовый путь зависит от режима
   base: mode === 'development' ? '/' : './',
   
+=======
+export default defineConfig({
+  plugins: [react(),
+    tailwindcss()
+  ],
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
   server: {
     port: 5173,
     strictPort: true,
     host: true
   },
+<<<<<<< HEAD
   
   // ✅ ВАЖНО: явно укажите папку сборки
   build: {
@@ -43,3 +51,10 @@ export default defineConfig(({ mode }) => ({
     drop: mode === 'development' ? [] : ['console', 'debugger']
   }
 }))
+=======
+  // ВАЖНО: явно укажите папку сборки
+  build: {
+    outDir: './dist'
+  }
+})
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751

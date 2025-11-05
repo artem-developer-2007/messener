@@ -62,7 +62,11 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
       id: user.id,
       name: user.displayName || `User${user.id}`,
       email: user.email,
+<<<<<<< HEAD
       avatar: user.avatar,
+=======
+      avatar: user.avatar || `https://ui-avatars.com/api/?name=${user.id}&background=4294ff&color=ffffff&bold=true`,
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
       online: false,
       lastSeen: 'не в сети',
       messages: []
@@ -102,7 +106,11 @@ const ContactsList = ({ contacts, activeContact, setActiveContact, searchTerm, s
           <div className="relative flex-1">
             <input 
               type="text" 
+<<<<<<< HEAD
               placeholder="Введите ID или email" 
+=======
+              placeholder="Введите ID или email..." 
+>>>>>>> 0dd18585cf3beb9146e60a185cd7943f679b8751
               className="w-full bg-slate-800 text-white rounded-lg pl-3 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
